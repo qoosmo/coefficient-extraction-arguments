@@ -5,3 +5,5 @@ import CoeffExtract.UniversalSplit
 import CoeffExtract.PolynomialBridge
 import CoeffExtract.MLEKernel
 import CoeffExtract.VirtualReversal
+import CoeffExtract.MLEProduct
+import CoeffExtract.RSReversal

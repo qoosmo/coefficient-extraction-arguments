@@ -9,3 +9,6 @@ import CoeffExtract
 #print axioms CoeffExtract.eval_tablePolynomial
 #print axioms CoeffExtract.middleCoeff_mleKernel_eq
 #print axioms CoeffExtract.permuteWord_involutive
+#print axioms CoeffExtract.eval_mleKernelProduct
+#print axioms CoeffExtract.eval_reversedTablePolynomial
+#print axioms CoeffExtract.rsWord_reversal

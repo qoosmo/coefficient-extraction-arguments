@@ -8,3 +8,4 @@ import CoeffExtract.VirtualReversal
 import CoeffExtract.MLEProduct
 import CoeffExtract.RSReversal
 import CoeffExtract.BinaryKernelBridge
+import CoeffExtract.MLEProductRecursion

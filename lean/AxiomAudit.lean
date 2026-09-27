@@ -15,3 +15,4 @@ import CoeffExtract
 #print axioms CoeffExtract.maskSub_testBit
 #print axioms CoeffExtract.revIndex_testBit
 #print axioms CoeffExtract.mleKernelCoeffs_eq_productWeightTable
+#print axioms CoeffExtract.mleKernelProduct_succ

@@ -12,3 +12,6 @@ import CoeffExtract
 #print axioms CoeffExtract.eval_mleKernelProduct
 #print axioms CoeffExtract.eval_reversedTablePolynomial
 #print axioms CoeffExtract.rsWord_reversal
+#print axioms CoeffExtract.maskSub_testBit
+#print axioms CoeffExtract.revIndex_testBit
+#print axioms CoeffExtract.mleKernelCoeffs_eq_productWeightTable

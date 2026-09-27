@@ -1,0 +1,421 @@
+\section{Complexity and Concrete Protocol Costs}
+\label{sec:complexity}
+
+The preceding sections were organized around correctness and soundness.  This section records the computational objects that an implementation must actually construct and gives symbolic prover, verifier, communication, and preprocessing costs.  We deliberately separate these accounting identities from measured wall-clock performance.  The latter depends on the field implementation, NTT layout, Merkle hashing, memory traffic, batching strategy, and hardware, and will be reported only after the Rust implementation is complete.
+
+The main structural point is simple.  Heterogeneous batching removes repeated \emph{proximity proofs}: once all relation-specific words have been fixed, there is one master Reed--Solomon word, one folding chain, and one final set of $\kappa$ queries.  Batching does not make the relation-specific auxiliary commitments disappear.  Consequently, a meaningful performance comparison must distinguish
+\begin{equation}
+  \text{front-end algebra and commitments}
+  \qquad\text{from}\qquad
+  \text{the shared folding backend}.
+  \label{eq:complexity-two-layers}
+\end{equation}
+This distinction is particularly important for lookup, sparse matrix multiplication, R1CS, and memory consistency, where many algebraic relations share one folding test.
+
+\subsection{Cost model}
+\label{sec:complexity-cost-model}
+
+Throughout this section,
+\[
+  N=2^n,
+  \qquad
+  M=2^{n+R},
+  \qquad
+  \rho=N/M,
+\]
+and the folding test performs $\ell$ binary folds and $\kappa$ independent base-domain queries.  We count arithmetic in the challenge field $\F$ unless stated otherwise.
+
+Rather than build an implementation-dependent FFT constant into the mathematical statement, we use the following kernel costs.
+
+\begin{definition}[Implementation kernels]
+\label{def:complexity-kernels}
+Let
+\begin{align}
+  \mathsf{Mul}_N
+  &\defeq \text{cost of multiplying two degree-$<N$ polynomials},\\
+  \mathsf{Enc}_{N,M}
+  &\defeq \text{cost of evaluating a degree-$<N$ polynomial on $L$},\\
+  \mathsf{Merkle}_{M}(d)
+  &\defeq \text{cost of committing to $d$ field elements per one of $M$ leaves},\\
+  \mathsf{Fold}_{M,\ell}
+  &\defeq \text{cost of one honest binary folding chain of length $\ell$},\\
+  \mathsf{Open}_{M}(q)
+  &\defeq \text{cost of producing/verifying authenticated openings of $q$ leaves}.
+  \label{eq:complexity-kernel-costs}
+\end{align}
+The parameter $d$ in the Merkle cost allows several words fixed in the same transcript round to be packed into one vector-valued leaf.
+\end{definition}
+
+On a multiplicative domain supporting radix-two FFT/NTT algorithms, the standard bounds are
+\begin{equation}
+  \mathsf{Mul}_N=O(N\log N),
+  \qquad
+  \mathsf{Enc}_{N,M}=O(M\log M),
+  \label{eq:standard-fft-bounds}
+\end{equation}
+with the usual possibility of computing a degree-$<N$ evaluation on an $M$-point domain by a padded transform.  The paper does not assume these particular algorithms for correctness.
+
+The folding backend itself is linear in the domain size.
+
+\begin{proposition}[Arithmetic size of one folding chain]
+\label{prop:folding-arithmetic-cost}
+Let $M_j=M/2^j$.  An honest binary folding chain of length $\ell$ computes
+\begin{equation}
+  \sum_{j=1}^{\ell}M_j
+  =M(1-2^{-\ell})
+  <M
+  \label{eq:fold-total-output-cells}
+\end{equation}
+folded field elements.  Hence, once the initial word is available, the arithmetic work of all folds is $O(M)$ field operations, and the total number of field elements in all explicitly materialized folded words is less than $M$.
+\end{proposition}
+
+\begin{proof}
+At fold $j$, the output domain has $M_j=M/2^j$ points.  Summing the geometric series gives
+\[
+  \sum_{j=1}^{\ell}\frac{M}{2^j}
+  =M\left(1-2^{-\ell}\right).
+\]
+The local fold formula of \cref{lem:fold-local-line} uses a constant number of field operations per output point, proving the arithmetic bound.
+\end{proof}
+
+If only the checkpoint set $\mathcal C\subseteq[1,\ell-1]$ of \cref{sec:folding-test} is committed, the arithmetic folds are still computed but only the checkpoint words require Merkle roots.  Thus higher arity and checkpointing alter hashing and proof size without changing the algebraic reduction developed in this paper.
+
+\subsection{One master word rather than many proximity tests}
+\label{sec:complexity-master-word}
+
+Let
+\[
+  \mathcal U=(u_0,\ldots,u_{s-1})
+\]
+be the protected component list of \cref{def:protected-component-list}, and let $P_i\in\F[X]_{<N}$ denote the honest polynomial underlying $u_i$.  The master challenge $\beta$ defines
+\begin{equation}
+  u_{\beta}
+  =\sum_{i=0}^{s-1}\beta^iu_i,
+  \qquad
+  P_{\beta}
+  =\sum_{i=0}^{s-1}\beta^iP_i.
+  \label{eq:complexity-master-poly}
+\end{equation}
+The naive implementation could materialize all $s$ words on $L$ and combine them pointwise, at cost $O(sM)$.  This is unnecessary for the honest prover.
+
+\begin{proposition}[Coefficient-side construction of the master word]
+\label{prop:master-coefficient-side}
+Assume the honest prover has coefficient representations of the protected polynomials $P_0,\ldots,P_{s-1}$.  Then it can construct the master polynomial $P_{\beta}$ in
+\begin{equation}
+  O(sN)
+  \label{eq:master-coeff-cost}
+\end{equation}
+field operations and obtain the initial folding word by one evaluation of $P_{\beta}$ on $L$, at cost $\mathsf{Enc}_{N,M}$.  In particular, heterogeneous batching need not incur an $O(sM)$ pointwise master-word construction.
+\end{proposition}
+
+\begin{proof}
+Use Horner accumulation coefficientwise:
+\[
+  P_{\beta}
+  =P_0+\beta(P_1+\beta(P_2+\cdots+\beta P_{s-1})\cdots).
+\]
+There are $N$ coefficient positions and $s-1$ scalar multiplication/addition steps per position, giving $O(sN)$ field operations.  Evaluation of the resulting degree-$<N$ polynomial on $L$ is exactly one call to the encoding kernel.
+\end{proof}
+
+The hypothesis of \cref{prop:master-coefficient-side} is natural for the present protocols.  Reversal is a coefficient permutation; affine virtual words are coefficientwise linear combinations; DEEP quotients are obtained by synthetic division in $O(N)$ operations; and the high-part polynomial $H$ is obtained while splitting a product already computed by the prover.  Thus the implementation should keep coefficient representations of protected words whenever possible and regard full-domain evaluations as commitment objects, not as the primary representation for batching.
+
+\begin{corollary}[Backend sharing]
+\label{cor:backend-sharing}
+For a heterogeneous batch with $s$ protected words, the final low-degree backend requires, beyond relation-specific commitments,
+\begin{equation}
+  O(sN)+\mathsf{Enc}_{N,M}+\mathsf{Fold}_{M,\ell}
+  \label{eq:shared-backend-cost}
+\end{equation}
+arithmetic work, one folding transcript, and $\kappa$ final proximity queries.  It does not require $s$ independent Reed--Solomon proximity proofs.
+\end{corollary}
+
+\begin{proof}
+By \cref{prop:master-coefficient-side}, the $s$ protected degree-$<N$ polynomials can be combined in coefficient form in $O(sN)$ field operations and evaluated on $L$ with one call to the encoding kernel.  The heterogeneous protocol of \cref{def:heterogeneous-batching-protocol} then invokes one folding proximity test on that master word, so the remaining work is one $\mathsf{Fold}_{M,\ell}$ execution and the common set of $\kappa$ final queries.  No component word starts an independent folding transcript.  This gives \eqref{eq:shared-backend-cost}.
+\end{proof}
+
+\subsection{Primitive relation costs}
+\label{sec:complexity-primitives}
+
+We next count the relation-specific objects.  A \emph{new oracle word} means a length-$M$ word that was not already part of the application instance and must therefore be committed by the prover.  Public and virtual words do not count as new oracles.  The counts below are before packing several words into one vector-valued Merkle leaf.
+
+\begin{proposition}[Primitive word counts]
+\label{prop:primitive-word-counts}
+Ignoring exact deduplication between distinct claims, the primitive protocols have the costs in \cref{tab:primitive-costs}.
+\end{proposition}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}p{3.1cm}ccc p{4.2cm}@{}}
+\toprule
+Relation & $s$ & new oracles & products & extra coefficient work \\
+\midrule
+Public linear functional & $3$ & $1$ & $1$ & $O(N)$ \\
+Committed inner product & $4$ & $1$ & $1$ & $O(N)$ reversal and split \\
+Hadamard $a\had b=c$ & $9$ & $2$ & $1$ & $O(N)$ scaling and quotients \\
+Lookup & $\le25$ & $8$ & $3$ & $O(N)$ inverse and quotient work \\
+Multiset equality & $\le24$ & $8$ & $2$ & $O(N)$ inverse and quotient work \\
+\bottomrule
+\end{tabular}
+\caption{Naive per-relation accounting before deduplication, packing, fusion, and sharing with surrounding claims.  ``Polynomial products'' are products of two degree-$<N$ polynomials used by coefficient extraction.}
+\label{tab:primitive-costs}
+\end{table}
+
+\begin{proof}
+A public linear functional protects $(w,w_A,h)$ and introduces only $w_A$; its universal split requires one product $UK_p$.  An inner product protects $(w_a,w_b^\star,w_A,h)$, introduces only $w_A$, and requires one product $V_aV_b^\star$.  A Hadamard claim protects the nine words listed in \eqref{eq:had-protected-words}; its prover sends $w_Q,w_A$ and computes the single product $Q_\gamma V_b^\star$.
+
+For lookup, \cref{def:lookup-sub-batch} contains two Hadamard claims, one public linear-functional claim, and one committed inner-product claim.  Hence the protected-word count is at most
+\[
+  2\cdot9+3+4=25.
+\]
+The two inverse tables $w_q,w_h$ are new source oracles.  The two Hadamard claims contribute four opening/scaled oracles, while the linear-functional and inner-product claims contribute one opening oracle each, for $2+4+1+1=8$ new words.  The same decomposition gives three coefficient products: one for each Hadamard and one for the inner product.
+
+For multiset equality, the sub-batch contains two Hadamard claims and two public linear functionals, giving
+\[
+  2\cdot9+2\cdot3=24
+\]
+protected words.  The inverse tables contribute two source oracles, the two Hadamard claims four new oracles, and the two linear claims two opening oracles, again totaling eight.  Only the two Hadamard coefficient products are required.  All remaining operations are coefficient permutations, affine combinations, synthetic divisions, or tablewise inversions and therefore require $O(N)$ field operations apart from the cost of producing their commitments.
+\end{proof}
+
+The table intentionally counts calls rather than pretending that all calls have the same constant.  For example, $Q_\gamma(X)=V_a(\gamma X)$ is obtained by $N$ scalar multiplications on coefficients, whereas a degree-$<N$ polynomial product normally uses an NTT or another multiplication algorithm.
+
+\subsection{Verifier locality}
+\label{sec:complexity-verifier}
+
+The verifier's algebra outside Merkle authentication is small because virtual words are locally computable.
+
+\begin{proposition}[Local arithmetic of the primitive relations]
+\label{prop:primitive-verifier-locality}
+For one base-domain query point, excluding the common folding checks and Merkle authentication:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item a public linear functional requires one source value and one opening value, plus the cost of evaluating its public kernel;
+  \item an inner product requires values of $w_a,w_A$ at the query point and $w_b$ at the inverse point, followed by $O(1)$ field operations;
+  \item a Hadamard claim requires values of $w_a,w_c,w_Q,w_A$ at the query point and $w_b$ at the inverse point, followed by $O(1)$ field operations and three quotient divisions;
+  \item lookup and multiset relations add no asymptotically new local algebra beyond their constituent Hadamard, linear-functional, and inner-product claims.
+\end{enumerate}
+All quotient divisions over a batch of query points may be implemented with one batched inversion per denominator family.
+\end{proposition}
+
+\begin{proof}
+Items (i)--(iii) are \cref{prop:ip-local-verifier-work,prop:had-local-verifier-work} and the public-kernel formula of \cref{sec:linear-functionals}.  Item (iv) follows because lookup and multiset protocols are defined by heterogeneous composition of those primitives.  Standard batch inversion replaces $q$ inversions of nonzero field elements by one inversion and $O(q)$ multiplications.
+\end{proof}
+
+For multilinear evaluation, the public kernel
+\[
+  E_z^\star(\xi)
+  =\prod_{i=1}^{n}\bigl(z_i+(1-z_i)\xi^{2^{i-1}}\bigr)
+\]
+requires $O(n)$ field operations per queried base point if powers are produced by repeated squaring.  The arbitrary inner-product primitive avoids this $O(n)$ kernel computation because its second factor is read from the inverse fibre instead.
+
+\subsection{Sparse matrix--vector and R1CS costs}
+\label{sec:complexity-r1cs}
+
+The sparse protocol is designed so that no dense $N\times N$ object is formed.  Let $K=\operatorname{nnz}(M)$ before padding.  Public preprocessing stores $O(N)$ padded sparse-entry metadata, or $O(K)$ meaningful nonzero entries plus padding descriptors in an implementation that generates the dummy tail implicitly.
+
+\begin{proposition}[Primitive decomposition of sparse matrix--vector multiplication]
+\label{prop:smv-primitive-count}
+The sparse matrix--vector batch of \cref{def:sparse-matvec-sub-batch} contains
+\begin{equation}
+  5\ \text{Hadamard claims},
+  \qquad
+  5\ \text{public linear functionals},
+  \qquad
+  1\ \text{committed inner product}.
+  \label{eq:smv-primitive-count}
+\end{equation}
+Consequently, before exact deduplication,
+\begin{equation}
+  s_{\mathrm{SMV}}\le5\cdot9+5\cdot3+4=64.
+  \label{eq:smv-naive-s}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Each indexed-selection sub-batch of \cref{def:indexed-selection-sub-batch} consists of two Hadamard relations and two public linear functionals.  There are two indexed selections, contributing four of each.  The sparse contribution relation $v=\mu\had u$ contributes one further Hadamard; \eqref{eq:sparse-entry-inner-product} contributes one committed inner product; and \eqref{eq:sparse-output-linear-functional} contributes one public linear functional.  The protected-word bound follows from \eqref{eq:naive-protected-count}.
+\end{proof}
+
+A naive, unfused sparse-matrix prover introduces seven semantic/outer auxiliary words before the primitive opening words: $w_u,w_s,w_v$ and two inverse words for each of the two indexed selections.  The primitive coefficient-extraction layer then introduces
+\[
+  2\cdot5+5+1=16
+\]
+additional opening/scaled words.  Thus a standalone sparse-matrix proof can contain up to $23$ new length-$M$ oracle words before packing and sharing.  This number is an implementation target, not a lower bound: vector-valued leaves, reuse of inverse tables, direct generation of public words, and fusion of several coefficient products can reduce both roots and memory traffic.
+
+For R1CS the primitive decomposition is completely explicit.
+
+\begin{proposition}[Primitive decomposition of sparse R1CS]
+\label{prop:r1cs-primitive-count}
+The R1CS batch of \cref{def:r1cs-sub-batch} contains
+\begin{equation}
+  16\ \text{Hadamard claims},
+  \qquad
+  15\ \text{public linear functionals},
+  \qquad
+  3\ \text{committed inner products}.
+  \label{eq:r1cs-primitive-count}
+\end{equation}
+Hence its naive protected-word count is
+\begin{equation}
+  s_{\mathrm{R1CS}}
+  \le16\cdot9+15\cdot3+3\cdot4
+  =201.
+  \label{eq:r1cs-protected-upper}
+\end{equation}
+An optional public-input fingerprint adds one public linear-functional claim and raises this naive bound to $204$.
+\end{proposition}
+
+\begin{proof}
+Each sparse matrix--vector relation contributes the counts of \cref{prop:smv-primitive-count}.  Three such relations therefore contribute $15$ Hadamards, $15$ public linear functionals, and $3$ inner products.  The final R1CS multiplication relation $a\had b=c$ contributes one additional Hadamard.  Substitution into \eqref{eq:naive-protected-count} gives \eqref{eq:r1cs-protected-upper}.
+\end{proof}
+
+The important point is that \cref{prop:r1cs-primitive-count} does \emph{not} imply 34 independent folding proofs.  All $34$ primitive relations contribute to one list of protected words and hence to one master fold.  Their cost is paid in auxiliary word construction and commitment, whereas the final proximity backend is shared.
+
+\subsection{Memory-checking costs}
+\label{sec:complexity-memory}
+
+The memory construction is larger algebraically but has the same backend shape.
+
+\begin{proposition}[Primitive decomposition of memory consistency]
+\label{prop:memory-primitive-count}
+The memory sub-batch of \cref{def:memory-sub-batch} expands to
+\begin{equation}
+  17\ \text{Hadamard claims},
+  \qquad
+  7\ \text{public linear functionals},
+  \qquad
+  4\ \text{committed inner products}.
+  \label{eq:memory-primitive-count}
+\end{equation}
+Therefore, before exact deduplication,
+\begin{equation}
+  s_{\mathrm{Mem}}
+  \le17\cdot9+7\cdot3+4\cdot4
+  =190.
+  \label{eq:memory-protected-upper}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+The scalar multiset sub-batch contributes two Hadamards and two public linear functionals.  Each of the four lookup sub-batches contributes two Hadamards, one public linear functional, and one committed inner product, for a total of eight Hadamards, four linear functionals, and four inner products.  The local memory semantics add the seven explicit Hadamard relations in \cref{def:memory-sub-batch}, and the adjacency residual check adds one public linear functional.  Summing gives \eqref{eq:memory-primitive-count}; \eqref{eq:memory-protected-upper} follows from \eqref{eq:naive-protected-count}.
+\end{proof}
+
+As for R1CS, the protected-word count controls the field term in the current unique-decoding batching theorem, but it is not the number of Merkle roots and it is not the number of folding proofs.  Many protected words are virtual, and many committed words can share leaves because they are fixed in the same round and queried at the same positions.
+
+\subsection{Merkle roots, opened values, and proof size}
+\label{sec:complexity-proof-size}
+
+A byte-level proof-size formula depends on commitment layout.  We therefore state a layout-independent accounting identity and then the simple packed-leaf upper bound that the Rust implementation will instantiate.
+
+Let $R_{\mathrm{root}}$ be the number of Merkle roots appearing in the non-interactive transcript, let $Q_{\mathrm{leaf}}$ be the total number of distinct authenticated leaves opened across all roots after deduplicating repeated positions, and let $H_{\mathrm{auth}}$ be the number of sibling hashes carried by the chosen Merkle opening or multiproof representation.  Let $B_F$ and $B_H$ denote the serialized byte lengths of one field element and one hash output.
+
+\begin{proposition}[Generic proof-size accounting]
+\label{prop:generic-proof-size}
+Apart from fixed-size scalar challenges that are recomputed by Fiat--Shamir, a compiled proof has serialized size
+\begin{equation}
+  B_F\,Q_F
+  +B_H\bigl(R_{\mathrm{root}}+H_{\mathrm{auth}}+Q_{\mathrm{salt}}\bigr)
+  +O(1),
+  \label{eq:proof-size-accounting}
+\end{equation}
+where $Q_F$ is the number of transmitted field elements in opened leaves, scalar prover messages, and the final explicit polynomial, and $Q_{\mathrm{salt}}$ is the number of opened salted leaves.  In particular, vector-valued leaves change $Q_F$ but can reduce $R_{\mathrm{root}}$ and $H_{\mathrm{auth}}$ substantially.
+\end{proposition}
+
+\begin{proof}
+The salted-BCS transcript of \cref{sec:pq-bcs} contains Merkle roots, prover scalar messages, the final explicit polynomial, and authenticated openings.  Each opened leaf contributes its serialized field values and one salt; each authentication path or multiproof contributes sibling hashes.  Challenges are recomputed from the transcript and therefore need not be transmitted.  Summing those serialized objects gives \eqref{eq:proof-size-accounting}.
+\end{proof}
+
+For a binary folding chain with checkpoint set $\mathcal C$, the final polynomial contributes exactly
+\begin{equation}
+  N_\ell=N/2^\ell
+  \label{eq:final-poly-elements}
+\end{equation}
+field elements before any padding convention.  The query portion scales linearly with $\kappa$ times the number of committed roots that must be opened at the corresponding fibre positions.  Consequently, reducing the number of queries, packing same-round words, and using Merkle multiproofs can improve proof size independently of the algebraic primitive count.
+
+This also explains why the protected-word count $s$ should never be converted directly into a byte estimate.  A protected word can be public, virtual, or already committed; only actual oracle roots and opened committed leaves enter \eqref{eq:proof-size-accounting}.
+
+\subsection{Asymptotic comparison with Sumcheck}
+\label{sec:complexity-vs-sumcheck}
+
+The purpose of this paper is not to claim an asymptotic prover improvement over Sumcheck.  In fact, for several isolated relations the opposite comparison is immediate.
+
+\begin{proposition}[Arithmetic comparison for an isolated degree-two sum]
+\label{prop:ip-vs-sumcheck-complexity}
+For
+\[
+  S=\sum_{w\in\B^n}a(w)b(w),
+\]
+a standard multilinear degree-two Sumcheck prover can be implemented in $O(N)$ field operations once the two length-$N$ evaluation tables are available, whereas the coefficient-extraction inner-product prover performs one degree-$<N$ polynomial product and one low-part commitment.  With FFT/NTT multiplication and encoding this is, in the generic model,
+\begin{equation}
+  O(N\log N)+\mathsf{Enc}_{N,M}
+  \label{eq:ip-ce-generic-cost}
+\end{equation}
+before the shared folding backend.
+\end{proposition}
+
+\begin{proof}
+The usual multilinear Sumcheck recurrence folds two length-$N$ tables once per Boolean coordinate; across all rounds the table lengths form $N+N/2+\cdots<2N$, giving linear arithmetic.  The coefficient-extraction protocol instead computes $V_aV_b^\star$ and commits to the resulting low part, as shown in \cref{sec:ip-costs}.  Applying \eqref{eq:standard-fft-bounds} yields \eqref{eq:ip-ce-generic-cost}.
+\end{proof}
+
+Thus the potential advantages of coefficient extraction are architectural rather than an automatic arithmetic speedup:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item the same Reed--Solomon/FRI backend handles evaluation, inner products, Hadamard relations, lookup, permutation, sparse R1CS, and memory consistency;
+  \item heterogeneous relations share one folding chain and one query phase;
+  \item there is no recursive Sumcheck transcript whose algebraic rounds must be interleaved with a separate polynomial-commitment opening protocol;
+  \item the operations are regular polynomial multiplication, scaling, encoding, hashing, and folding, which are natural targets for parallel and hardware acceleration;
+  \item the cryptographic backend remains transparent and hash based.
+\end{enumerate}
+Whether these structural advantages compensate for extra polynomial products and auxiliary commitments is precisely what must be measured.
+
+For a pointwise arithmetic circuit with $T_\times$ multiplication gates, the present construction can materialize one auxiliary table per multiplication gate and prove each multiplication by a Hadamard relation.  Without fusion this incurs $T_\times$ relation-specific products/commitments, whereas an optimized Sumcheck prover may traverse the original witness tables in $O(T_\times N)$ arithmetic.  Consequently, a benchmark that reports only verifier time or only the final folding time would be incomplete.
+
+\subsection{Benchmark obligations}
+\label{sec:complexity-benchmark-plan}
+
+The Rust implementation will report the following quantities separately.
+
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item \textbf{Front-end arithmetic.}  Time for table construction, inverses, coefficient scaling, polynomial products, synthetic divisions, and coefficient-side master batching.
+  \item \textbf{Reed--Solomon encoding.}  Time and memory for every newly committed degree-$<N$ polynomial, reported both individually and after any fusion.
+  \item \textbf{Merkle commitments.}  Hash time, root count, packed leaf width, and peak memory.
+  \item \textbf{Folding backend.}  Time for the one shared master encoding/folding chain, final polynomial, and query generation.
+  \item \textbf{Verifier.}  Field operations, inversions, hashes, bytes read, and total wall-clock time.
+  \item \textbf{Proof size.}  Field payload, roots, salts, authentication hashes, and total serialized bytes, so that improvements from packing or multiproofs remain visible.
+\end{enumerate}
+
+The primary controlled comparison must use the same machine, compiler, field arithmetic, hash function, security target, and serialization policy.  In particular, the first baselines will be:
+\begin{equation}
+\begin{aligned}
+  &\text{tree-based multilinear Sumcheck},\\
+  &\text{Sumcheck + the same RS/Merkle opening backend}.
+\end{aligned}
+  \label{eq:benchmark-primary-baselines}
+\end{equation}
+so that the effect of replacing Sumcheck algebra by coefficient extraction is isolated from unrelated implementation choices.  External systems such as Spartan, HyperPlonk, BaseFold, DeepFold, WHIR, and Jolt/Lasso should be reported in a separate table unless their public implementations can be run under the same environment and security parameters.
+
+\begin{remark}[No benchmark claim in the current manuscript]
+\label{rem:no-benchmark-claim}
+The theorems of this section are symbolic accounting statements.  They do not imply that coefficient extraction is faster, smaller, or more memory efficient than an optimized Sumcheck implementation.  The present mathematical contribution is that all relations considered in this paper can be reduced to one transparent Reed--Solomon/FRI proof architecture with explicit soundness and post-quantum compilation.  Performance superiority, if any, is an empirical claim and will be made only from reproducible measurements.
+\end{remark}
+
+\subsection{Summary of the implementation target}
+\label{sec:complexity-summary}
+
+The complete prover pipeline suggested by the theory is therefore
+\begin{equation}
+\begin{split}
+  &\text{construct relation-specific coefficient tables and auxiliary words}
+  \\
+  &\quad\longrightarrow\
+  \text{commit the semantic and auxiliary source words}
+  \\
+  &\quad\longrightarrow\
+  \text{form all protected polynomials in coefficient form}
+  \\
+  &\quad\longrightarrow\
+  \text{combine them into one master polynomial in $O(sN)$ work}
+  \\
+  &\quad\longrightarrow\
+  \text{one RS encoding + one FRI-style folding chain + $\kappa$ queries}.
+\end{split}
+\label{eq:implementation-pipeline}
+\end{equation}
+The corresponding verifier performs relation-specific local computations only at the queried positions and then checks the common folding path.  The comparison and conclusion sections will use this accounting to position the construction against existing proof-system architectures and to state the remaining optimization problems precisely.

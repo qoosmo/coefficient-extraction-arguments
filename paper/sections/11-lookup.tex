@@ -1,0 +1,507 @@
+\section{Logarithmic-Derivative Lookup Arguments}
+\label{sec:lookup}
+
+Lookup arguments prove that the entries of one committed table occur in another table.  The logarithmic-derivative method rewrites this set-theoretic statement as an identity between sums of reciprocals.  In the present framework those reciprocals are committed tables, their defining inverse equations are Hadamard relations, and the remaining equality is an inner-product identity.  Consequently a lookup can be reduced to the primitives of \cref{sec:linear-functionals,sec:inner-product,sec:hadamard} and protected by the single folding test of \cref{sec:heterogeneous-batching}.
+
+The use of logarithmic derivatives for lookup arguments goes back to the multivariate construction of Hab\"ock~\cite{Habock23} and subsequent GKR-based refinements~\cite{PapiniHabock23}.  Our point here is not the rational identity itself, but its realization on the table-form Kronecker commitments of this paper without an algebraic Sumcheck: the two inverse relations are Hadamard checks, while the logarithmic-derivative equality is a pair of coefficient-extraction claims.
+
+Throughout this section the query table, lookup table, and multiplicity table all have length $N=2^n$.  Unequal lengths can be embedded into a common power-of-two length by the usual tagging and padding techniques; the equal-length formulation keeps the algebra and soundness statement transparent.
+
+\subsection{The algebraic lookup relation}
+\label{sec:lookup-relation}
+
+Let $f,t,m:\B^n\to\F$.  The table $f$ contains the values to be looked up, $t$ is the lookup table, and $m$ is a multiplicity witness attached to the rows of $t$.
+
+\begin{definition}[Residue multiplicities]
+\label{def:lookup-residue-multiplicities}
+For $a\in\F$, define
+\begin{align}
+  \nu_f(a)
+  &\defeq
+  \sum_{w\in\B^n:\,f(w)=a}1_{\F},
+  \label{eq:lookup-query-multiplicity}\\
+  \mu_{t,m}(a)
+  &\defeq
+  \sum_{u\in\B^n:\,t(u)=a}m(u).
+  \label{eq:lookup-table-multiplicity}
+\end{align}
+The sums are taken in $\F$.  We say that $(f,t,m)$ satisfies the \emph{algebraic lookup relation} if
+\begin{equation}
+  \nu_f(a)=\mu_{t,m}(a)
+  \qquad\text{for every }a\in\F.
+  \label{eq:algebraic-lookup-relation}
+\end{equation}
+\end{definition}
+
+The formulation in \eqref{eq:algebraic-lookup-relation} permits repeated values in $t$: only the sum of the row multiplicities attached to all occurrences of the same value matters.  It also separates the algebraic relation from the integer interpretation of multiplicities.  The latter follows under the natural characteristic condition recorded below.
+
+\begin{proposition}[Ordinary lookup as a consequence]
+\label{prop:ordinary-lookup-consequence}
+Assume that the characteristic $p=\operatorname{char}(\F)$ satisfies $p>N$.  If $(f,t,m)$ satisfies \eqref{eq:algebraic-lookup-relation}, then every value occurring in $f$ occurs in $t$:
+\begin{equation}
+  \{f(w):w\in\B^n\}
+  \subseteq
+  \{t(u):u\in\B^n\}.
+  \label{eq:lookup-support-inclusion}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Let $a=f(w_0)$ for some $w_0\in\B^n$.  Then the integer number of occurrences of $a$ in $f$ lies in $[1,N]$.  Since $p>N$, its image in $\F$ is nonzero, so $\nu_f(a)\ne0$.  By \eqref{eq:algebraic-lookup-relation}, $\mu_{t,m}(a)\ne0$.  If no row of $t$ contained $a$, the defining sum \eqref{eq:lookup-table-multiplicity} would be empty and hence zero, a contradiction.  Thus $a$ occurs in $t$.
+\end{proof}
+
+We next express \eqref{eq:algebraic-lookup-relation} as a rational-function identity.  This is the logarithmic-derivative step.
+
+\begin{definition}[Lookup rational function]
+\label{def:lookup-rational-function}
+For tables $f,t,m:\B^n\to\F$, define
+\begin{equation}
+  R_{f,t,m}(Z)
+  \defeq
+  \sum_{w\in\B^n}\frac{1}{Z-f(w)}
+  -
+  \sum_{u\in\B^n}\frac{m(u)}{Z-t(u)}
+  \in \F(Z).
+  \label{eq:lookup-rational-function}
+\end{equation}
+\end{definition}
+
+\begin{lemma}[Residue form]
+\label{lem:lookup-residue-form}
+Let
+\begin{equation}
+  S_{f,t}
+  \defeq
+  \operatorname{im}(f)\cup\operatorname{im}(t)
+  \subseteq\F.
+  \label{eq:lookup-value-set}
+\end{equation}
+Then
+\begin{equation}
+  R_{f,t,m}(Z)
+  =
+  \sum_{a\in S_{f,t}}
+  \frac{\nu_f(a)-\mu_{t,m}(a)}{Z-a}.
+  \label{eq:lookup-residue-expansion}
+\end{equation}
+Consequently, $(f,t,m)$ satisfies the algebraic lookup relation if and only if
+\begin{equation}
+  R_{f,t,m}(Z)=0
+  \qquad\text{in }\F(Z).
+  \label{eq:lookup-rational-zero}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Group the terms of the first sum in \eqref{eq:lookup-rational-function} according to the common value $a=f(w)$, and group the second sum according to $a=t(u)$.  The coefficient of $(Z-a)^{-1}$ is exactly \eqref{eq:lookup-query-multiplicity} minus \eqref{eq:lookup-table-multiplicity}, giving \eqref{eq:lookup-residue-expansion}.
+
+If \eqref{eq:algebraic-lookup-relation} holds, every numerator in \eqref{eq:lookup-residue-expansion} is zero, so \eqref{eq:lookup-rational-zero} follows.  Conversely, suppose \eqref{eq:lookup-rational-zero} holds.  Fix $a_0\in S_{f,t}$ and multiply \eqref{eq:lookup-residue-expansion} by $Z-a_0$.  Evaluating the resulting rational function at $Z=a_0$ leaves only the $a=a_0$ term and gives
+\[
+  \nu_f(a_0)-\mu_{t,m}(a_0)=0.
+\]
+This holds for every $a_0\in S_{f,t}$, and outside $S_{f,t}$ both multiplicities are zero.  Hence \eqref{eq:algebraic-lookup-relation} holds.
+\end{proof}
+
+For soundness we need a quantitative form of the preceding equivalence.
+
+\begin{lemma}[Bad lookup challenges]
+\label{lem:lookup-bad-challenges}
+Assume that $(f,t,m)$ does not satisfy \eqref{eq:algebraic-lookup-relation}.  Then there exists a nonzero polynomial
+\begin{equation}
+  P_{f,t,m}(Z)\in\F[Z]
+  \label{eq:lookup-numerator-polynomial}
+\end{equation}
+with
+\begin{equation}
+  \deg P_{f,t,m}\le |S_{f,t}|-1\le2N-1
+  \label{eq:lookup-numerator-degree}
+\end{equation}
+such that for every $\zeta\in\F\setminus S_{f,t}$,
+\begin{equation}
+  R_{f,t,m}(\zeta)=0
+  \quad\Longleftrightarrow\quad
+  P_{f,t,m}(\zeta)=0.
+  \label{eq:lookup-root-equivalence}
+\end{equation}
+In particular,
+\begin{equation}
+  \left|
+    \left\{
+      \zeta\in\F\setminus S_{f,t}:
+      R_{f,t,m}(\zeta)=0
+    \right\}
+  \right|
+  \le2N-1.
+  \label{eq:lookup-bad-shift-count}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Put $S=S_{f,t}$ and
+\begin{equation}
+  D_S(Z)=\prod_{a\in S}(Z-a).
+  \label{eq:lookup-squarefree-denominator}
+\end{equation}
+By \cref{lem:lookup-residue-form},
+\begin{equation}
+  P_{f,t,m}(Z)
+  \defeq
+  D_S(Z)R_{f,t,m}(Z)
+  =
+  \sum_{a\in S}
+  \bigl(\nu_f(a)-\mu_{t,m}(a)\bigr)
+  \frac{D_S(Z)}{Z-a}
+  \label{eq:lookup-numerator-explicit}
+\end{equation}
+is a polynomial of degree at most $|S|-1\le2N-1$.
+
+Because the lookup relation is false, choose $a_0\in S$ with
+\[
+  \nu_f(a_0)-\mu_{t,m}(a_0)\ne0.
+\]
+Evaluating \eqref{eq:lookup-numerator-explicit} at $a_0$ gives
+\[
+  P_{f,t,m}(a_0)
+  =
+  \bigl(\nu_f(a_0)-\mu_{t,m}(a_0)\bigr)
+  \prod_{a\in S\setminus\{a_0\}}(a_0-a),
+\]
+which is nonzero because the elements of $S$ are distinct.  Thus $P_{f,t,m}$ is nonzero.
+
+For $\zeta\notin S$, $D_S(\zeta)\ne0$, so \eqref{eq:lookup-root-equivalence} follows from \eqref{eq:lookup-numerator-explicit}.  The root bound \cref{lem:root-bound} and \eqref{eq:lookup-numerator-degree} imply \eqref{eq:lookup-bad-shift-count}.
+\end{proof}
+
+\subsection{Committed lookup relation}
+\label{sec:committed-lookup-relation}
+
+\begin{definition}[Committed lookup relation]
+\label{def:lookup-relation}
+Fix $0<\delta\le(1-\rho)/2$.  The relation $\mathcal R^{\delta}_{\mathrm{Look}}$ consists of pairs
+\[
+  ((w_f,w_t,w_m),(f,t,m))
+\]
+with $w_f,w_t,w_m\in\F^L$ and tables $f,t,m:\B^n\to\F$ satisfying
+\begin{align}
+  \Delta_{\mathrm{fib}}(w_f,\Enc_T(f))&\le\delta,
+  \label{eq:lookup-relation-f}\\
+  \Delta_{\mathrm{fib}}(w_t,\Enc_T(t))&\le\delta,
+  \label{eq:lookup-relation-t}\\
+  \Delta_{\mathrm{fib}}(w_m,\Enc_T(m))&\le\delta,
+  \label{eq:lookup-relation-m}
+\end{align}
+and the algebraic lookup relation \eqref{eq:algebraic-lookup-relation}.  The instance is $(w_f,w_t,w_m)$ and the witness is $(f,t,m)$.
+\end{definition}
+
+Let $\mathbf 1:\B^n\to\F$ denote the constant-one table, and let
+\begin{equation}
+  w_{\mathbf1}\defeq\Enc_T(\mathbf1)\in C_0.
+  \label{eq:lookup-one-word}
+\end{equation}
+This codeword is public.  After the lookup challenge $\zeta$ is sampled, define the two affine virtual words
+\begin{equation}
+  d_f\defeq \zeta w_{\mathbf1}-w_f,
+  \qquad
+  d_t\defeq \zeta w_{\mathbf1}-w_t.
+  \label{eq:lookup-affine-words}
+\end{equation}
+They represent the denominator tables $\zeta\mathbf1-f$ and $\zeta\mathbf1-t$ whenever the original commitment words represent $f$ and $t$.
+
+\begin{lemma}[Affine virtual words preserve decoding]
+\label{lem:lookup-affine-decoding}
+Let $w\in\F^L$, let $a:\B^n\to\F$, and let $\zeta\in\F$.  Put
+\[
+  d=\zeta w_{\mathbf1}-w.
+\]
+Then
+\begin{equation}
+  \Delta_{\mathrm{fib}}
+  \bigl(d,\Enc_T(\zeta\mathbf1-a)\bigr)
+  =
+  \Delta_{\mathrm{fib}}\bigl(w,\Enc_T(a)\bigr).
+  \label{eq:lookup-affine-distance}
+\end{equation}
+Consequently, in the unique-decoding regime, if $w$ decodes to $a$ within fibre distance $\delta$, then $d$ decodes uniquely to $\zeta\mathbf1-a$ within the same distance.
+\end{lemma}
+
+\begin{proof}
+Linearity of the table commitment, \cref{prop:table-commitment-bijection}, gives
+\[
+  \Enc_T(\zeta\mathbf1-a)
+  =\zeta w_{\mathbf1}-\Enc_T(a).
+\]
+For every $\xi\in L$,
+\[
+  d(\xi)-\Enc_T(\zeta\mathbf1-a)(\xi)
+  =-\bigl(w(\xi)-\Enc_T(a)(\xi)\bigr).
+\]
+Hence the two words disagree at exactly the same positions and, in particular, on exactly the same fibres.  This proves \eqref{eq:lookup-affine-distance}.  Uniqueness follows from \cref{prop:unique-table-near-word}.
+\end{proof}
+
+\subsection{The lookup protocol}
+\label{sec:lookup-protocol}
+
+The protocol uses two inverse tables
+\begin{equation}
+  q(w)=\frac{1}{\zeta-f(w)},
+  \qquad
+  h(u)=\frac{1}{\zeta-t(u)}.
+  \label{eq:lookup-inverse-tables}
+\end{equation}
+They are defined whenever $\zeta\notin S_{f,t}$.  Their defining equations are the pointwise relations
+\begin{equation}
+  q\had(\zeta\mathbf1-f)=\mathbf1,
+  \qquad
+  h\had(\zeta\mathbf1-t)=\mathbf1.
+  \label{eq:lookup-inverse-hadamards}
+\end{equation}
+The logarithmic-derivative equality becomes
+\begin{equation}
+  \ip{q}{\mathbf1}=\ip{m}{h}.
+  \label{eq:lookup-inner-product-equality}
+\end{equation}
+Thus lookup is reduced to two Hadamard relations, one public linear functional, and one committed inner product.
+
+\begin{definition}[Lookup sub-batch]
+\label{def:lookup-sub-batch}
+Fix a lookup shift $\zeta\in\F$, inverse commitment words $w_q,w_h\in\F^L$, and a scalar $S\in\F$.  Define the heterogeneous batch
+\begin{equation}
+  \mathfrak B_{\mathrm{Look}}(\zeta,w_q,w_h,S)
+  \label{eq:lookup-sub-batch}
+\end{equation}
+to contain the following four claims:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item the Hadamard relation
+  \begin{equation}
+    q\had(\zeta\mathbf1-f)=\mathbf1
+    \label{eq:lookup-batch-had-f}
+  \end{equation}
+  instantiated on the oracle words $(w_q,d_f,w_{\mathbf1})$;
+
+  \item the Hadamard relation
+  \begin{equation}
+    h\had(\zeta\mathbf1-t)=\mathbf1
+    \label{eq:lookup-batch-had-t}
+  \end{equation}
+  instantiated on $(w_h,d_t,w_{\mathbf1})$;
+
+  \item the public linear-functional claim
+  \begin{equation}
+    \ip{q}{\mathbf1}=S
+    \label{eq:lookup-batch-linear}
+  \end{equation}
+  instantiated on $w_q$ with public table $\mathbf1$;
+
+  \item the committed inner-product claim
+  \begin{equation}
+    \ip{m}{h}=S
+    \label{eq:lookup-batch-ip}
+  \end{equation}
+  instantiated on $(w_m,w_h)$.
+\end{enumerate}
+All four claims are protected by one execution of $\Pi_{\mathrm{Het}}$ from \cref{def:heterogeneous-batching-protocol}.
+\end{definition}
+
+The affine words $d_f,d_t$ in \eqref{eq:lookup-affine-words} are virtual: querying them requires one query to $w_f$ or $w_t$ and one field operation.  The public word $w_{\mathbf1}$ requires no commitment.  Therefore the lookup reduction introduces only the two new committed inverse tables $w_q,w_h$ before the heterogeneous batch creates its usual opening oracles.
+
+\begin{definition}[Lookup protocol $\Pi_{\mathrm{Look}}$]
+\label{def:lookup-protocol}
+The instance is $(w_f,w_t,w_m)$.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The verifier samples a lookup shift $\zeta\leftarrow\F$.
+
+  \item The prover sends two oracle words $w_q,w_h\in\F^L$ and a scalar $S\in\F$.  Honestly, if $\zeta\notin S_{f,t}$, these are
+  \begin{equation}
+    w_q=\Enc_T(q),
+    \qquad
+    w_h=\Enc_T(h),
+    \qquad
+    S=\sum_{w\in\B^n}q(w),
+    \label{eq:lookup-honest-messages}
+  \end{equation}
+  with $q,h$ as in \eqref{eq:lookup-inverse-tables}.  If $\zeta\in S_{f,t}$, the honest prover aborts and the verifier rejects.
+
+  \item The verifier constructs $d_f,d_t$ by \eqref{eq:lookup-affine-words} and the parties execute one heterogeneous batch protocol
+  \begin{equation}
+    \Pi_{\mathrm{Het}}
+    \bigl(\mathfrak B_{\mathrm{Look}}(\zeta,w_q,w_h,S)\bigr).
+    \label{eq:lookup-run-heterogeneous}
+  \end{equation}
+\end{enumerate}
+\end{definition}
+
+\begin{theorem}[Lookup completeness]
+\label{thm:lookup-completeness}
+Suppose $(w_f,w_t,w_m)$ has a witness $(f,t,m)$ in $\mathcal R^{\delta}_{\mathrm{Look}}$, the three instance words are the honest commitments to that witness, and the prover follows \cref{def:lookup-protocol}.  Conditioned on
+\begin{equation}
+  \zeta\notin S_{f,t}
+  \label{eq:lookup-nonpole-shift}
+\end{equation}
+and on the Hadamard DEEP challenges of the heterogeneous batch avoiding their three public pole sets, the verifier accepts with probability $1$.
+
+With all challenges sampled uniformly from $\F$ and rejection on poles, the acceptance probability is at least
+\begin{equation}
+  1-\frac{2N}{|\F|}-\frac{3M}{|\F|}.
+  \label{eq:lookup-completeness-bound}
+\end{equation}
+The $3M/|\F|$ term disappears if the public Hadamard DEEP challenges are sampled by rejection outside their pole sets.
+\end{theorem}
+
+\begin{proof}
+Since $|S_{f,t}|\le2N$, the event \eqref{eq:lookup-nonpole-shift} fails with probability at most $2N/|\F|$.  Fix a shift satisfying \eqref{eq:lookup-nonpole-shift}.  Then the inverse tables \eqref{eq:lookup-inverse-tables} are well defined and satisfy the two Hadamard identities \eqref{eq:lookup-inverse-hadamards} pointwise.
+
+Because $(f,t,m)$ satisfies the algebraic lookup relation, \cref{lem:lookup-residue-form} gives $R_{f,t,m}=0$.  Evaluating at $Z=\zeta$ yields
+\[
+  \sum_{w\in\B^n}\frac{1}{\zeta-f(w)}
+  =
+  \sum_{u\in\B^n}\frac{m(u)}{\zeta-t(u)},
+\]
+which is precisely \eqref{eq:lookup-inner-product-equality}.  Hence the four claims of \cref{def:lookup-sub-batch} have a joint witness $(f,t,m,q,h)$, with the affine denominator tables supplied by \cref{lem:lookup-affine-decoding}.  The completeness theorem for the heterogeneous batch, \cref{thm:heterogeneous-completeness}, gives conditional acceptance with probability $1$.  Its unrestricted Hadamard completeness loss is at most $3M/|\F|$, giving \eqref{eq:lookup-completeness-bound} by the union bound.
+\end{proof}
+
+\begin{remark}[Pole-free extension-field challenge]
+\label{rem:lookup-extension-shift}
+Suppose $f$ and $t$ take values in the base field $\Fq$ and the challenge field is a strict extension $\F\supsetneq\Fq$.  Sampling
+\begin{equation}
+  \zeta\leftarrow \F\setminus\Fq
+  \label{eq:lookup-extension-challenge}
+\end{equation}
+ensures automatically that $\zeta\notin S_{f,t}$.  Thus the lookup-shift completeness loss vanishes.  The soundness root bound below becomes $(2N-1)/|\F\setminus\Fq|$.  This is often the natural configuration when witness columns live in a base field and verifier challenges already use an extension field.
+\end{remark}
+
+\subsection{Soundness}
+\label{sec:lookup-soundness}
+
+The next lemma is the bridge between a joint witness for the four batched subclaims and the original lookup relation.
+
+\begin{lemma}[A joint sub-batch witness implies a logarithmic-derivative equality]
+\label{lem:lookup-joint-witness}
+Fix $\zeta\in\F$.  Suppose the batch $\mathfrak B_{\mathrm{Look}}(\zeta,w_q,w_h,S)$ has a joint witness in the sense of \cref{def:heterogeneous-batch-instance}.  Then there exist tables $f,t,m$ satisfying \eqref{eq:lookup-relation-f}--\eqref{eq:lookup-relation-m} such that
+\begin{equation}
+  \zeta\notin S_{f,t}
+  \label{eq:lookup-joint-nonpole}
+\end{equation}
+and
+\begin{equation}
+  R_{f,t,m}(\zeta)=0.
+  \label{eq:lookup-joint-rational-zero}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+A joint witness provides decoded tables $d_f',d_t',m,q,h$ for the denominator, multiplicity, and inverse words that occur in the four subclaims.  Define
+\begin{equation}
+  f\defeq\zeta\mathbf1-d_f',
+  \qquad
+  t\defeq\zeta\mathbf1-d_t'.
+  \label{eq:lookup-joint-denominators}
+\end{equation}
+Because $d_f=\zeta w_{\mathbf1}-w_f$ and $d_t=\zeta w_{\mathbf1}-w_t$, the pointwise difference calculation in \cref{lem:lookup-affine-decoding} applied in reverse shows
+\[
+  \Delta_{\mathrm{fib}}(w_f,\Enc_T(f))
+  =\Delta_{\mathrm{fib}}(d_f,\Enc_T(d_f'))\le\delta
+\]
+and similarly $\Delta_{\mathrm{fib}}(w_t,\Enc_T(t))\le\delta$.  The inner-product subclaim already supplies $m$ with $\Delta_{\mathrm{fib}}(w_m,\Enc_T(m))\le\delta$.  The two Hadamard claims in the joint witness therefore give, for every $w,u\in\B^n$,
+\begin{equation}
+  q(w)(\zeta-f(w))=1,
+  \qquad
+  h(u)(\zeta-t(u))=1.
+  \label{eq:lookup-joint-inverses}
+\end{equation}
+Hence no denominator in \eqref{eq:lookup-joint-inverses} is zero, proving \eqref{eq:lookup-joint-nonpole}, and
+\[
+  q(w)=\frac1{\zeta-f(w)},
+  \qquad
+  h(u)=\frac1{\zeta-t(u)}.
+\]
+The public-linear and committed-inner-product claims share the same scalar $S$, so
+\[
+  \sum_w q(w)
+  =S
+  =\sum_u m(u)h(u).
+\]
+Substituting the inverse formulas gives exactly \eqref{eq:lookup-joint-rational-zero}.
+\end{proof}
+
+Let $s_{\mathrm{Look}}$ denote the protected-word count of the heterogeneous batch in \cref{def:lookup-sub-batch}, after any exact deduplication.  The direct instantiation of \cref{def:protected-component-list} gives the simple bound
+\begin{equation}
+  s_{\mathrm{Look}}\le
+  2\cdot9+3+4=25.
+  \label{eq:lookup-protected-count}
+\end{equation}
+The actual count can be smaller because $w_q$, $w_{\mathbf1}$, and other public or repeated virtual words may be shared.
+
+\begin{theorem}[Lookup soundness]
+\label{thm:lookup-soundness}
+Assume
+\begin{equation}
+  0<\delta\le\frac{1-\rho}{2},
+  \qquad
+  2N<(1-\delta)M.
+  \label{eq:lookup-parameters}
+\end{equation}
+If the instance $(w_f,w_t,w_m)$ has no witness in $\mathcal R^{\delta}_{\mathrm{Look}}$, then every deterministic prover is accepted by $\Pi_{\mathrm{Look}}$ with probability at most
+\begin{equation}
+\begin{split}
+  \varepsilon_{\mathrm{Look}}
+  \le{}&
+  \frac{2N-1}{|\F|}
+  +\frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{Look}}-1)M}{|\F|}
+  \\
+  &+\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\end{split}
+\label{eq:lookup-soundness-bound}
+\end{equation}
+The same bound holds for randomized provers by averaging.  If the shift is sampled uniformly from a pole-free set $\Gamma\subseteq\F$, replace the first term by $(2N-1)/|\Gamma|$.
+\end{theorem}
+
+\begin{proof}
+By \cref{prop:unique-table-near-word}, each of $w_f,w_t,w_m$ has at most one table within fibre distance $\delta$.  If one of the three has none, \cref{lem:lookup-joint-witness} shows that no value of $\zeta$ can make the lookup sub-batch have a joint witness.
+
+Otherwise let $f,t,m$ denote these unique decoded tables.  Because the original lookup instance is false, $(f,t,m)$ does not satisfy \eqref{eq:algebraic-lookup-relation}.  By \cref{lem:lookup-bad-challenges}, there are at most $2N-1$ values $\zeta\in\F\setminus S_{f,t}$ for which $R_{f,t,m}(\zeta)=0$.  By \cref{lem:lookup-joint-witness}, these are the only shifts for which the heterogeneous lookup sub-batch can have a joint witness.  Therefore
+\begin{equation}
+  \Pr_{\zeta\leftarrow\F}
+  [\mathfrak B_{\mathrm{Look}}\text{ has a joint witness}]
+  \le\frac{2N-1}{|\F|}.
+  \label{eq:lookup-joint-witness-probability}
+\end{equation}
+
+Fix any other shift.  The heterogeneous batch is a false instance containing two Hadamard claims, one public linear-functional claim, and one committed inner-product claim.  Apply \cref{thm:heterogeneous-soundness}.  Since Hadamard claims are present, its bound is
+\begin{equation}
+  \frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{Look}}-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:lookup-conditional-batch-soundness}
+\end{equation}
+Combining \eqref{eq:lookup-joint-witness-probability} and \eqref{eq:lookup-conditional-batch-soundness} gives \eqref{eq:lookup-soundness-bound}.  For a randomized prover, condition on its internal random tape; the deterministic bound applies to every fixed tape, and averaging preserves the same upper bound.
+
+If $\zeta$ is sampled uniformly from a pole-free set $\Gamma$, the polynomial $P_{f,t,m}$ of \cref{lem:lookup-bad-challenges} has at most $2N-1$ roots in $\Gamma$, so the first probability is at most $(2N-1)/|\Gamma|$.
+\end{proof}
+
+\begin{corollary}[Lookup knowledge by decoding]
+\label{cor:lookup-knowledge}
+Under the hypotheses of \cref{thm:lookup-soundness}, if a prover is accepted with probability larger than the right-hand side of \eqref{eq:lookup-soundness-bound}, then the unique decodings of $w_f,w_t,w_m$ within radius $\delta$ exist and form a witness $(f,t,m)\in\mathcal R^{\delta}_{\mathrm{Look}}$.  They can be recovered by a polynomial-time Reed--Solomon unique-decoding algorithm inside half the minimum distance~\cite{WelchBerlekamp86,Gao03}.
+\end{corollary}
+
+\begin{proof}
+The contrapositive is \cref{thm:lookup-soundness}.  Uniqueness of the three decoded tables is \cref{prop:unique-table-near-word}; polynomial-time recovery follows from standard Reed--Solomon unique decoding~\cite{WelchBerlekamp86,Gao03} and the coefficient/table bijection \cref{prop:table-isomorphism}.
+\end{proof}
+
+\subsection{What the reduction buys}
+\label{sec:lookup-consequences}
+
+The lookup protocol contains no algebraic Sumcheck.  Its relation-specific algebra is exactly
+\begin{equation}
+\begin{aligned}
+  \text{lookup}
+  &={}2\text{ inverse Hadamard relations}\\
+  &\quad+1\text{ public linear functional}\\
+  &\quad+1\text{ committed inner product}.
+\end{aligned}
+\label{eq:lookup-decomposition}
+\end{equation}
+After the two inverse tables have been committed, every low-degree obligation produced by those four relations is protected by the single folding test of \cref{sec:heterogeneous-batching}.  In particular, adding a lookup to a larger proof need not add another independent proximity proof: its protected words can be appended to the same master batch used by evaluations, inner products, and other Hadamard constraints.
+
+The reduction is deliberately stated for an unindexed lookup.  Indexed lookups can be obtained by tagging each value with its index before applying the multiset machinery developed in the next section.  The present theorem isolates the part relevant to the coefficient-extraction framework: logarithmic derivatives turn lookup membership into inverse pointwise products and one scalar inner-product equality, all of which are already native relations of the framework.

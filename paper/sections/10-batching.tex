@@ -1,0 +1,485 @@
+\section{One Folding Test for Heterogeneous Relations}
+\label{sec:heterogeneous-batching}
+
+The preceding sections deliberately presented public linear functionals, committed inner products, and Hadamard relations as separate protocols.  Their algebraic cores are different, but their proximity layer is the same: before the folding test starts, the verifier has a finite family of words that should all be Reed--Solomon codewords of degree bound $N$, together with local identities that tie those words to the claimed relation.  Running an independent folding test for every relation would repeat the most expensive verifier work and would obscure this common structure.
+
+This section shows that the folding stage is paid only once.  After all relation-specific challenges and prover messages have been fixed, the verifier collects every low-degree word required by every claim, removes exact repetitions if desired, and places the resulting words on one random polynomial curve
+\[
+  W_\beta=\sum_{i=0}^{s-1}\beta^iu_i.
+\]
+One execution of the folding test on $W_\beta$ then protects the entire family.  Correlated agreement recovers simultaneous degree-$<N$ explanations for all $u_i$ on one large set whenever too many values of $\beta$ make the master batch close to the code.  The local coefficient, reversal, and DEEP identities from the preceding sections can therefore be applied simultaneously.
+
+The statement is important for two reasons.  First, it makes the framework compositional: later lookup, permutation, sparse matrix, and R1CS arguments may be assembled from the existing primitives without introducing a new proximity proof for every component.  Second, the proximity and query errors are paid once.  The price of the master batch is only the correlated-agreement field term, which grows with the number of protected component words rather than with the number of coordinates represented by those words.
+
+Throughout the section all claims use the same parameters $n,N,L,M,\rho,\delta,\ell,\kappa$ and the same base code
+\[
+  C_0=\RS_{\F}[L,N].
+\]
+We assume
+\begin{equation}
+  0<\delta\le\frac{1-\rho}{2}
+  \qquad\text{and}\qquad
+  2N<(1-\delta)M.
+  \label{eq:heterogeneous-parameters}
+\end{equation}
+The second inequality is the degree margin already used in the generic coefficient-extraction and Hadamard arguments.
+
+\subsection{Batch instances and protected words}
+\label{sec:batch-protected-words}
+
+We batch three classes of claims already proved in this manuscript.
+
+\begin{definition}[Heterogeneous batch instance]
+\label{def:heterogeneous-batch-instance}
+A \emph{heterogeneous batch instance} $\mathfrak B$ consists of finite families of the following claims.
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item \emph{Public linear functionals.}  For every $j\in J_{\mathrm{Lin}}$, a public table $p_j:\B^n\to\F$ and an instance
+  \[
+    (w_j;v_j)
+  \]
+  of the relation $\mathcal R^{\delta}_{\mathrm{Lin}}[p_j]$ from \cref{def:public-linear-functional-relation}.
+
+  \item \emph{Committed inner products.}  For every $j\in J_{\mathrm{IP}}$, an instance
+  \[
+    (w_{a,j},w_{b,j};S_j)
+  \]
+  of the relation $\mathcal R^{\delta}_{\mathrm{IP}}$ from \cref{def:ip-relation}.
+
+  \item \emph{Hadamard relations.}  For every $j\in J_{\mathrm{Had}}$, an instance
+  \[
+    (w_{a,j},w_{b,j},w_{c,j})
+  \]
+  of the relation $\mathcal R^{\delta}_{\mathrm{Had}}$ from \cref{def:hadamard-relation}.
+\end{enumerate}
+The same oracle word may occur in several claims.  A \emph{joint witness} assigns one table to each distinct original commitment word appearing in $\mathfrak B$, consistently across all of its occurrences, and makes every individual relation true.
+\end{definition}
+
+The consistency clause is essential.  For example, if the same commitment word is used in two claimed evaluations, the batch does not allow the prover to decode it to two different tables.  In the unique-decoding regime of \eqref{eq:heterogeneous-parameters}, at most one such table can be within fibre distance $\delta$ of a fixed word.
+
+We next describe the low-degree words that the master fold must protect.  These are exactly the words already used by the individual protocols, but without their individual final batching challenges.
+
+\begin{definition}[Protected component list]
+\label{def:protected-component-list}
+Fix all prover messages and all relation-specific challenges that occur before the final folding stage.
+
+For a public-linear-functional claim $j\in J_{\mathrm{Lin}}$, let $w_{A,j}$ be the prover's opening word and let
+\[
+  h_j(\xi)
+  =\frac{\xi w_j(\xi)K_{p_j}(\xi)-w_{A,j}(\xi)-v_j\xi^N}{\xi^{N+1}}
+\]
+be its virtual high-part word.  Its protected words are
+\begin{equation}
+  w_j,\qquad w_{A,j},\qquad h_j.
+  \label{eq:lin-protected-words}
+\end{equation}
+
+For an inner-product claim $j\in J_{\mathrm{IP}}$, let $w_{A,j}$ be the prover's opening word and define
+\begin{align}
+  w_{b,j}^{\star}(\xi)
+    &\defeq \xi^{N-1}w_{b,j}(\xi^{-1}),
+  \\
+  h_j(\xi)
+    &\defeq
+    \frac{\xi w_{a,j}(\xi)w_{b,j}^{\star}(\xi)-w_{A,j}(\xi)-S_j\xi^N}{\xi^{N+1}}.
+\end{align}
+Its protected words are
+\begin{equation}
+  w_{a,j},\qquad w_{b,j}^{\star},\qquad w_{A,j},\qquad h_j.
+  \label{eq:ip-protected-words}
+\end{equation}
+
+If $J_{\mathrm{Had}}\ne\varnothing$, all Hadamard claims use the same two verifier challenges $\gamma,\theta\in\F$.  For every $j\in J_{\mathrm{Had}}$, let $w_{Q,j},y_{1,j},y_{3,j},w_{A,j}$ be the prover's messages and define the five virtual words
+\[
+  w_{b,j}^{\star},\qquad
+  h_j,\qquad
+  q_{a,j},\qquad
+  q_{Q,j},\qquad
+  q_{c,j}
+\]
+exactly as in \eqref{eq:had-wrev}--\eqref{eq:had-qc}, using the common $\gamma,\theta$.  Its protected words are
+\begin{equation}
+\begin{split}
+  &w_{a,j},\quad w_{c,j},\quad w_{Q,j},\quad w_{b,j}^{\star},\quad
+  w_{A,j},\quad h_j,\\
+  &q_{a,j},\quad q_{Q,j},\quad q_{c,j}.
+\end{split}
+\label{eq:had-protected-words}
+\end{equation}
+
+Concatenate all protected words and, optionally, delete exact repetitions.  Denote the resulting ordered list by
+\begin{equation}
+  \mathcal U=(u_0,\ldots,u_{s-1}).
+  \label{eq:protected-list}
+\end{equation}
+The integer $s=|\mathcal U|$ is the \emph{protected-word count} of the batch.
+\end{definition}
+
+Without deduplication,
+\begin{equation}
+  s
+  =3|J_{\mathrm{Lin}}|
+   +4|J_{\mathrm{IP}}|
+   +9|J_{\mathrm{Had}}|.
+  \label{eq:naive-protected-count}
+\end{equation}
+Repeated original commitments and repeated virtual transformations may reduce this number.  The theorem below depends only on the actual value of $s$.
+
+\subsection{The master batching protocol}
+\label{sec:master-batching-protocol}
+
+The timing matters.  Every oracle that appears in $\mathcal U$ must be fixed before the master challenge $\beta$ is sampled.  Hadamard's geometric challenges must in turn be fixed before their corresponding prover messages.
+
+\begin{definition}[Heterogeneous batching protocol $\Pi_{\mathrm{Het}}$]
+\label{def:heterogeneous-batching-protocol}
+On a batch instance $\mathfrak B$ the parties proceed as follows.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item For every $j\in J_{\mathrm{Lin}}\cup J_{\mathrm{IP}}$, the prover sends the opening word $w_{A,j}$ required by the corresponding coefficient-extraction identity.
+
+  \item If $J_{\mathrm{Had}}\ne\varnothing$, the verifier samples one shared challenge $\gamma\leftarrow\F$.  For every $j\in J_{\mathrm{Had}}$, the prover sends $w_{Q,j}$.  The verifier then samples one shared challenge $\theta\leftarrow\F$, and the prover sends $y_{1,j},y_{3,j},w_{A,j}$ for every Hadamard claim.  If
+  \[
+    \gamma\in L,
+    \qquad
+    \theta\in L,
+    \qquad\text{or}\qquad
+    \gamma\theta\in L,
+  \]
+  the verifier rejects.
+
+  \item The verifier constructs all virtual words in \cref{def:protected-component-list}, obtaining the fixed list
+  \[
+    \mathcal U=(u_0,\ldots,u_{s-1}).
+  \]
+  It samples one master challenge $\beta\leftarrow\F$ and defines
+  \begin{equation}
+    W_\beta
+    \defeq
+    \sum_{i=0}^{s-1}\beta^iu_i.
+    \label{eq:master-batch-word}
+  \end{equation}
+
+  \item The parties run exactly one instance of $\Pi_{\mathrm{FT}}[\ell,\kappa]$, or one sparse-level variant covered by \cref{prop:virtual-levels}, on $W_\beta$.
+\end{enumerate}
+\end{definition}
+
+The individual challenges called $\beta$ in \cref{def:public-linear-functional-protocol,def:ip-protocol,def:hadamard-protocol} disappear in the heterogeneous protocol.  Their sole purpose was to protect the low-degree component words before a folding test.  The single challenge in \eqref{eq:master-batch-word} performs that role for all claims simultaneously.
+
+\begin{theorem}[Completeness]
+\label{thm:heterogeneous-completeness}
+Suppose $\mathfrak B$ has a joint witness and every prover message is generated honestly from that witness.  If $J_{\mathrm{Had}}=\varnothing$, the verifier accepts $\Pi_{\mathrm{Het}}$ with probability $1$.  If $J_{\mathrm{Had}}\ne\varnothing$, then conditioned on
+\[
+  \gamma,\theta,\gamma\theta\notin L,
+\]
+the verifier accepts with probability $1$, and under unrestricted uniform challenges the acceptance probability is at least
+\begin{equation}
+  1-\frac{3M}{|\F|}.
+  \label{eq:heterogeneous-completeness}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+For every public-linear-functional claim, the argument in \cref{thm:public-linear-functional-protocol} shows that the three words in \eqref{eq:lin-protected-words} are evaluations of polynomials of degree $<N$.  For every inner-product claim, \cref{thm:ip-completeness} shows the same for the four words in \eqref{eq:ip-protected-words}.  For every Hadamard claim, conditioned on the three poles lying outside $L$, the proof of \cref{thm:had-completeness} shows that all nine words in \eqref{eq:had-protected-words} lie in $C_0$.
+
+Therefore every $u_i$ in \eqref{eq:protected-list} lies in $C_0$.  Since $C_0$ is linear, $W_\beta\in C_0$ for every value of the master challenge.  Folding completeness, \cref{prop:folding-completeness}, gives conditional acceptance with probability $1$.  When Hadamard claims are present, the same union bound as in \cref{thm:had-completeness} gives \eqref{eq:heterogeneous-completeness}.  With rejection sampling outside the three pole sets, the batched protocol is perfectly complete.
+\end{proof}
+
+\subsection{Simultaneous correlated agreement}
+\label{sec:simultaneous-correlated-agreement}
+
+The key lemma below is the many-word form of the batching arguments already used for one coefficient claim and one Hadamard relation.  It is stated independently of those applications because later sections will reuse it for lookup, permutation, and sparse algebra.
+
+\begin{lemma}[Master correlated-agreement lemma]
+\label{lem:master-correlated-agreement}
+Let $u_0,\ldots,u_{s-1}\in\F^L$ with $s\ge2$, and let
+\[
+  W_\beta=\sum_{i=0}^{s-1}\beta^iu_i.
+\]
+Let $G\subseteq\F$ be the set of $\beta$ for which there exist a codeword $c_\beta\in C_0$ and a fibre-closed set $T_\beta\subseteq L$ satisfying
+\begin{equation}
+  |T_\beta|\ge(1-\delta)M
+  \qquad\text{and}\qquad
+  W_\beta=c_\beta\quad\text{on }T_\beta.
+  \label{eq:master-good-beta}
+\end{equation}
+If
+\begin{equation}
+  |G|>(s-1)M,
+  \label{eq:master-many-good}
+\end{equation}
+then there exist polynomials
+\[
+  P_0,\ldots,P_{s-1}\in\F[X]_{<N}
+\]
+and a fibre-closed set $T_\circ\subseteq L$ such that
+\begin{equation}
+  |T_\circ|\ge(1-\delta)M
+  \label{eq:master-common-fibre-size}
+\end{equation}
+and
+\begin{equation}
+  u_i(\xi)=P_i(\xi)
+  \qquad
+  (0\le i<s,\ \xi\in T_\circ).
+  \label{eq:master-common-fibre-agreement}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+For every $\beta\in G$, \eqref{eq:master-good-beta} implies
+\[
+  \Delta(W_\beta,C_0)\le\delta.
+\]
+Apply correlated agreement, \cref{thm:correlated-agreement}, with curve degree $t=s-1$.  Since \eqref{eq:master-many-good} is exactly the hypothesis $|G|>tM$, there exist polynomials $P_0,\ldots,P_{s-1}\in\F[X]_{<N}$ and a set $T\subseteq L$ with
+\[
+  |T|\ge(1-\delta)M
+\]
+such that
+\begin{equation}
+  u_i(\xi)=P_i(\xi)
+  \qquad
+  (0\le i<s,\ \xi\in T).
+  \label{eq:master-ca-point-set}
+\end{equation}
+Enlarge $T$ maximally so that \eqref{eq:master-ca-point-set} remains true for every component.
+
+For $\xi\notin T$, define the discrepancy polynomial
+\begin{equation}
+  d_\xi(Z)
+  =\sum_{i=0}^{s-1}Z^i\bigl(u_i(\xi)-P_i(\xi)\bigr).
+  \label{eq:master-discrepancy-polynomial}
+\end{equation}
+By maximality of $T$, at least one coefficient of $d_\xi$ is nonzero, so $d_\xi$ is a nonzero polynomial of degree at most $s-1$.  Hence the union of all roots of all $d_\xi$ with $\xi\notin T$ has cardinality at most
+\begin{equation}
+  (s-1)|L\setminus T|
+  \le(s-1)\delta M
+  <(s-1)M
+  <|G|.
+  \label{eq:master-root-union}
+\end{equation}
+Choose $\beta\in G$ outside this union, and let $T_\beta$ and $c_\beta$ satisfy \eqref{eq:master-good-beta}.  Define
+\[
+  \widehat c_\beta
+  =\ev_L\!\left(\sum_{i=0}^{s-1}\beta^iP_i\right)\in C_0.
+\]
+On $T\cap T_\beta$, both $c_\beta$ and $\widehat c_\beta$ equal $W_\beta$.  Moreover,
+\[
+  |T\cap T_\beta|
+  \ge(1-2\delta)M
+  \ge\rho M
+  =N,
+\]
+where the middle inequality is equivalent to $\delta\le(1-\rho)/2$.  Two degree-$<N$ Reed--Solomon codewords agreeing on at least $N$ points are equal by \cref{prop:rs-parameters}(2), so
+\[
+  c_\beta=\widehat c_\beta.
+\]
+If $\xi\in T_\beta$, then
+\[
+  d_\xi(\beta)
+  =W_\beta(\xi)-\widehat c_\beta(\xi)
+  =c_\beta(\xi)-\widehat c_\beta(\xi)
+  =0.
+\]
+The choice of $\beta$ outside the root union forces $\xi\in T$.  Thus
+\[
+  T_\beta\subseteq T.
+\]
+Taking $T_\circ=T_\beta$ gives a fibre-closed set of size at least $(1-\delta)M$ on which every equality in \eqref{eq:master-common-fibre-agreement} holds.
+\end{proof}
+
+\begin{remark}[Why a fibre-closed common set is recovered]
+\label{rem:master-fibre-closed}
+The correlated-agreement theorem itself supplies only an ordinary point set $T$.  Fibre distance, however, is the metric used by the folding proof.  The second half of \cref{lem:master-correlated-agreement} is therefore necessary: one carefully chosen good master challenge transports simultaneous agreement to the fibre-closed set $T_\circ$.  This is the same mechanism used in \cref{lem:generic-ce-batching,lem:had-batching}, now isolated once for an arbitrary number of protected words.
+\end{remark}
+
+\subsection{Recovering all relations from one common set}
+\label{sec:recover-all-relations}
+
+The master lemma only says that all protected words have simultaneous low-degree explanations.  The next proposition states that the algebra developed earlier is sufficient to recover every individual relation from those explanations.  For Hadamard claims the two outer challenges $\gamma,\theta$ still play their fingerprinting role.
+
+\begin{proposition}[Deterministic recovery on a common agreement set]
+\label{prop:heterogeneous-deterministic-recovery}
+Fix a transcript of \cref{def:heterogeneous-batching-protocol} through the messages immediately before the master challenge $\beta$, and assume the three Hadamard poles lie outside $L$.  Suppose there exist polynomials $P_i\in\F[X]_{<N}$ and a fibre-closed set $T_\circ$ satisfying \eqref{eq:master-common-fibre-size}--\eqref{eq:master-common-fibre-agreement} for the protected list $\mathcal U$.
+
+Then the following hold.
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item Every public-linear-functional source word decodes within fibre distance $\delta$ to a table, and its claimed scalar equals the required public linear functional of that table.
+
+  \item Every inner-product source pair decodes within fibre distance $\delta$ to tables $a,b$, and its claimed scalar equals $\langle a,b\rangle_{\B^n}$.
+
+  \item For every Hadamard claim there exist decoded tables $a,b,c$ and a polynomial $\widehat Q\in\F[X]_{<N}$ satisfying the conclusions \eqref{eq:had-batch-decode-a}--\eqref{eq:had-batch-coefficient} of \cref{lem:had-batching}.
+\end{enumerate}
+All occurrences of the same original commitment word decode to the same table.
+\end{proposition}
+
+\begin{proof}
+Consider first a public-linear-functional claim.  Let $P_U,P_A,P_H$ be the polynomial explanations of its three protected words.  On $T_\circ$, the defining formula for the virtual high-part word gives
+\[
+  \xi P_U(\xi)K_p(\xi)
+  -P_A(\xi)-v\xi^N-\xi^{N+1}P_H(\xi)=0.
+\]
+Hence the polynomial
+\[
+  \Phi(X)=XP_U(X)K_p(X)-P_A(X)-vX^N-X^{N+1}P_H(X)
+\]
+has degree at most $2N$ and vanishes on more than $2N$ points by \eqref{eq:heterogeneous-parameters}.  Root counting gives $\Phi=0$, so \cref{lem:universal-identity} yields
+\[
+  v=[X^{N-1}]P_UK_p.
+\]
+The table is the unique $t$ with $V_t=P_U$, and agreement on the fibre-closed set $T_\circ$ gives
+\[
+  \Delta_{\mathrm{fib}}(w,\Enc_T(t))\le\delta.
+\]
+By \cref{cor:public-linear-functional}, the displayed coefficient is $\Lambda_p(t)$.  This proves (i).
+
+For an inner-product claim, let $P_a,P_b^{\star},P_A,P_H$ explain its four protected words.  The virtual-high identity gives a degree-$\le2N$ polynomial
+\[
+  XP_aP_b^{\star}-P_A-SX^N-X^{N+1}P_H
+\]
+vanishing on $T_\circ$, hence identically zero.  Therefore
+\[
+  S=[X^{N-1}]P_aP_b^{\star}.
+\]
+Let $V_a=P_a$ and $V_b=(P_b^{\star})^{\star}$.  The middle-coefficient identity gives
+\[
+  S=\langle a,b\rangle_{\B^n}.
+\]
+Agreement of $w_a$ with $\ev_L(P_a)$ on $T_\circ$ gives the first fibre-distance bound.  For the second source word, the protected word is the virtual reversal of $w_b$.  By \cref{lem:inversion-preserves-fibres}, agreement of $w_b^{\star}$ with $\ev_L(P_b^{\star})$ on $T_\circ$ transports to agreement of $w_b$ with $\Enc_T(b)$ on the fibre-closed set $T_\circ^{-1}$ of the same cardinality.  This proves (ii).
+
+For a Hadamard claim, restrict the common polynomial explanations to the nine words listed in \eqref{eq:had-protected-words}.  The proof of \cref{lem:had-batching} after its correlated-agreement step uses only simultaneous degree-$<N$ explanations on a set of more than $2N$ points.  We already have the stronger fibre-closed set $T_\circ$.  Repeating its coefficient-identity and three DEEP-consistency arguments gives exactly \eqref{eq:had-batch-decode-a}--\eqref{eq:had-batch-coefficient}.  This proves (iii).
+
+Finally, if one original commitment word occurs in several claims, every occurrence agrees with its polynomial explanation on a fibre-closed set of size at least $(1-\delta)M$.  Equivalently, every resulting table commitment is within fibre distance $\delta$ of that same word.  By unique decoding, \cref{prop:unique-table-near-word}, there is at most one such table.  Thus the decoded witnesses are consistent across all occurrences.
+\end{proof}
+
+\subsection{Soundness of the heterogeneous batch}
+\label{sec:heterogeneous-soundness}
+
+The remaining issue is Hadamard's geometric fingerprint.  A common pair $(\gamma,\theta)$ suffices for arbitrarily many Hadamard claims: if the joint batch relation is false because at least one decoded Hadamard relation is false, fix one such relation.  The root-counting argument need only detect that one relation, so the algebraic error does not grow with $|J_{\mathrm{Had}}|$.
+
+\begin{lemma}[One shared Hadamard fingerprint]
+\label{lem:shared-hadamard-fingerprint}
+Assume every distinct original commitment word in the batch has a unique decoded table within fibre distance $\delta$, and suppose at least one Hadamard relation among those decoded tables is false.  Fix a deterministic prover.  With shared independent uniform challenges $\gamma,\theta\leftarrow\F$, except with probability at most
+\begin{equation}
+  \frac{2(N-1)}{|\F|},
+  \label{eq:shared-had-bad-pair}
+\end{equation}
+there cannot exist simultaneous low-degree explanations satisfying conclusion (iii) of \cref{prop:heterogeneous-deterministic-recovery} for every Hadamard claim.
+\end{lemma}
+
+\begin{proof}
+Choose one false Hadamard claim deterministically, for example the least one in a fixed ordering, and let its decoded tables be $\widehat a,\widehat b,\widehat c$.  Put
+\[
+  D(X)=V_{\widehat a\had\widehat b-\widehat c}(X).
+\]
+Since the relation is false, $D$ is nonzero and has degree at most $N-1$.  Thus
+\[
+  \Pr[D(\gamma)=0]\le\frac{N-1}{|\F|}.
+\]
+Fix $\gamma$ with $D(\gamma)\ne0$.  The prover's corresponding word $w_Q$ is now fixed because it is sent after $\gamma$ and before $\theta$.  If it has no degree-$<N$ decoding within fibre distance $\delta$, simultaneous recovery is already impossible.  Otherwise let $\widehat Q$ denote its unique decoding.
+
+If
+\[
+  \widehat Q(X)=V_{\widehat a}(\gamma X),
+\]
+then the two recovered identities
+\[
+  V_{\widehat c}(\gamma)
+  =[X^{N-1}]\widehat QV_{\widehat b}^{\star}
+  \qquad\text{and}\qquad
+  \widehat Q=V_{\widehat a}(\gamma X)
+\]
+would imply
+\[
+  V_{\widehat c}(\gamma)
+  =\sum_w\gamma^w\widehat a(w)\widehat b(w),
+\]
+that is, $D(\gamma)=0$, a contradiction.  Hence any simultaneous recovery must have
+\[
+  \widehat Q\ne V_{\widehat a}(\gamma X).
+\]
+Their difference is then a nonzero polynomial of degree at most $N-1$, fixed before $\theta$ is sampled.  The recovered DEEP equalities require
+\[
+  \widehat Q(\theta)=V_{\widehat a}(\gamma\theta),
+\]
+which occurs for at most $(N-1)/|\F|$ of the possible $\theta$.  A union bound with the bad-$\gamma$ event proves \eqref{eq:shared-had-bad-pair}.
+\end{proof}
+
+\begin{theorem}[Soundness of one-fold heterogeneous batching]
+\label{thm:heterogeneous-soundness}
+Let $\mathfrak B$ be a heterogeneous batch instance with protected-word count $s\ge2$, and assume \eqref{eq:heterogeneous-parameters}.  Suppose $\mathfrak B$ has no joint witness.  Then every prover is accepted by $\Pi_{\mathrm{Het}}$ with probability at most
+\begin{equation}
+  \varepsilon_{\mathrm{Het}}
+  \defeq
+  \mathbf 1_{J_{\mathrm{Had}}\ne\varnothing}
+  \frac{2(N-1)}{|\F|}
+  +\frac{(s-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:heterogeneous-soundness}
+\end{equation}
+The same bound holds for every sparse-level folding variant covered by \cref{prop:virtual-levels}.
+\end{theorem}
+
+\begin{proof}
+It suffices to fix a deterministic prover; a randomized prover is an average over deterministic ones.
+
+First consider the transcript up to the master challenge $\beta$.  If some original commitment word has no table within fibre distance $\delta$, then \cref{lem:master-correlated-agreement,prop:heterogeneous-deterministic-recovery} imply that the set $G$ of master challenges satisfying \eqref{eq:master-good-beta} has size at most $(s-1)M$: otherwise simultaneous agreement would decode that commitment, a contradiction.
+
+Assume therefore that every original commitment word has a unique decoded table.  If $J_{\mathrm{Had}}\ne\varnothing$ and at least one decoded Hadamard relation is false, \cref{lem:shared-hadamard-fingerprint} shows that, except with probability at most $2(N-1)/|\F|$ over the shared pair $(\gamma,\theta)$, simultaneous recovery of all Hadamard claims is impossible.  If no decoded Hadamard relation is false, this outer error is unnecessary.  In either case, outside the event charged by the first term of \eqref{eq:heterogeneous-soundness}, the absence of a joint witness means that at least one linear-functional or inner-product claim is false, or one Hadamard claim cannot satisfy its recovered identities.  By \cref{prop:heterogeneous-deterministic-recovery}, the master good set must again satisfy
+\begin{equation}
+  |G|\le(s-1)M.
+  \label{eq:heterogeneous-good-set-bound}
+\end{equation}
+Consequently the probability that the uniform master challenge lies in $G$ is at most
+\[
+  \frac{(s-1)M}{|\F|}.
+\]
+
+Condition on a master challenge $\beta\notin G$.  The definition of $G$ says that $W_\beta$ has no fibre-closed agreement set of relative size $1-\delta$ with a codeword in $C_0$.  The folding soundness theorem, \cref{thm:folding-soundness}, applies exactly as in the proof of \cref{thm:generic-ce-soundness}: bad folding challenges contribute at most $\varepsilon_{\mathrm{fold}}$, and if the final witness density remains below $1-\delta$, all $\kappa$ independent queries land in the accepting set with probability at most $(1-\delta)^\kappa$.  Adding the outer fingerprint term and the master-challenge term proves \eqref{eq:heterogeneous-soundness}.  The sparse-level statement follows from \cref{prop:virtual-levels}.
+\end{proof}
+
+\begin{remark}[The field term and the number of claims]
+\label{rem:heterogeneous-field-term}
+The master field term is
+\[
+  \frac{(s-1)M}{|\F|},
+\]
+where $s$ counts protected low-degree words, not coordinates and not arithmetic gates.  One Hadamard relation already certifies $N$ coordinatewise multiplications at once.  Likewise one inner-product relation certifies an $N$-term bilinear sum.  Later sections aggregate lookup, sparse-matrix, and R1CS constraints into a small number of such table relations before invoking the master fold.
+
+The bound is useful when $(s-1)M\ll|\F|$.  If a concrete application creates too many protected words, one may enlarge the challenge field, reduce $s$ by deduplicating shared words, or introduce a hierarchy of algebraic reductions before the final proximity batch.  No such optimization is needed for the correctness theorem.
+\end{remark}
+
+\begin{remark}[Why shared $\gamma$ and $\theta$ matter]
+\label{rem:shared-had-challenges}
+Using one pair $(\gamma,\theta)$ for all Hadamard claims prevents the root-counting term from scaling linearly with the number of Hadamard relations.  If the conjunction is false, choose one false decoded relation.  Detecting that relation costs at most two degree-$(N-1)$ root events, irrespective of how many other Hadamard claims are simultaneously present.  The proximity cost is then paid once through the master batch.
+\end{remark}
+
+\subsection{Extraction and verifier cost}
+\label{sec:heterogeneous-extraction-cost}
+
+The master batch also gives the correct witness structure for later knowledge arguments.
+
+\begin{corollary}[Decoding extraction from an accepting batch]
+\label{cor:heterogeneous-extraction}
+Assume the hypotheses of \cref{thm:heterogeneous-soundness}.  If the acceptance probability of a prover exceeds the right-hand side of \eqref{eq:heterogeneous-soundness}, then there exists a transcript prefix and simultaneous degree-$<N$ explanations for all protected words from which one obtains a joint witness for $\mathfrak B$ by uniquely decoding each distinct original commitment word.  In particular, every repeated occurrence of one commitment is assigned the same table.
+\end{corollary}
+
+\begin{proof}
+The contrapositive is \cref{thm:heterogeneous-soundness}.  More concretely, acceptance above the stated error forces the outer Hadamard challenges outside their bad root events and forces more than $(s-1)M$ master challenges to admit the agreement structure required by the folding witness argument.  Then \cref{lem:master-correlated-agreement} gives simultaneous polynomial explanations on one fibre-closed set, and \cref{prop:heterogeneous-deterministic-recovery} recovers all scalar and Hadamard identities.  Unique decoding of the original commitments gives the joint witness.
+\end{proof}
+
+\begin{remark}[One folding verifier, many local reads]
+\label{rem:heterogeneous-verifier-cost}
+The protocol executes one folding chain and one set of $\kappa$ final query locations.  At a queried fibre, however, the verifier must locally evaluate every component of $W_\beta$.  Thus the arithmetic work for forming the master word is $O(s)$ field operations per queried point, in addition to the application-specific local formulas such as public-kernel evaluation, reversal, and DEEP quotients.
+
+In a Merkle compilation, the number of authentication paths depends on the commitment layout rather than directly on $s$.  Words committed in the same round and queried at the same positions can be stored as vector-valued leaves and share authentication paths.  Words fixed in different transcript rounds require separate roots.  We defer the exact hash and proof-size accounting to the implementation and complexity sections; the theorem here is an IOP-level statement and does not assume a particular Merkle layout.
+\end{remark}
+
+\subsection{Consequence for the remainder of the paper}
+\label{sec:batching-consequence}
+
+The role of \cref{thm:heterogeneous-soundness} is to separate algebra from proximity.  To add a new relation to the framework, it is enough to do three things:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item reduce the relation to a finite family of degree-$<N$ table words and local algebraic identities;
+  \item prove that simultaneous low-degree explanations on a set of more than the relevant identity degree force the claimed relation, up to explicit low-degree fingerprint events;
+  \item add those words to the protected list $\mathcal U$.
+\end{enumerate}
+The folding argument itself is unchanged.  In particular, the lookup and permutation constructions of the next sections will reduce their inverse relations to Hadamard constraints and their global equality to linear or inner-product constraints.  Their protected words can then be inserted into the same master list and verified by one folding test.

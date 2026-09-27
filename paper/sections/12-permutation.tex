@@ -1,0 +1,510 @@
+\section{Multiset and Permutation Arguments}
+\label{sec:permutation}
+
+Permutation checks are a basic consistency primitive in proof systems: two committed columns should contain the same values, possibly in a different order, and tagged variants enforce a prescribed wiring permutation.  Grand-product arguments are a standard way to prove such statements; HyperPlonk, for example, reduces permutation constraints to polynomial identities that are ultimately checked through Sumcheck~\cite{HyperPlonk23}.  In the present framework the logarithmic-derivative lookup of \cref{sec:lookup} has a simpler specialization.  Multiset equality is proved by two inverse Hadamard relations and two public linear functionals, all protected by the single folding test of \cref{sec:heterogeneous-batching}.  A prescribed permutation is then reduced to multiset equality by random compression of index--value pairs.
+
+Throughout this section, tables have length $N=2^n$.  We first formulate multiset equality algebraically over the field and then record the characteristic condition under which it coincides with ordinary equality of finite multisets.
+
+\subsection{Algebraic multiset equality}
+\label{sec:algebraic-multiset}
+
+Let $a,b:\B^n\to\F$.  For $v\in\F$, define the field-valued multiplicities
+\begin{equation}
+  \nu_a(v)\defeq
+  \sum_{w\in\B^n:\,a(w)=v}1_{\F},
+  \qquad
+  \nu_b(v)\defeq
+  \sum_{w\in\B^n:\,b(w)=v}1_{\F}.
+  \label{eq:multiset-field-multiplicities}
+\end{equation}
+
+\begin{definition}[Algebraic multiset equality]
+\label{def:algebraic-multiset-equality}
+We write
+\begin{equation}
+  a\equiv_{\mathrm{ms}} b
+  \label{eq:algebraic-multiset-equality}
+\end{equation}
+if
+\begin{equation}
+  \nu_a(v)=\nu_b(v)
+  \qquad\text{for every }v\in\F.
+  \label{eq:multiset-multiplicity-equality}
+\end{equation}
+\end{definition}
+
+\begin{proposition}[Relation with ordinary multiset equality]
+\label{prop:ordinary-multiset-equality}
+Assume $p=\operatorname{char}(\F)>N$.  Then $a\equiv_{\mathrm{ms}}b$ if and only if the ordinary multisets
+\begin{equation}
+  \{\!\{a(w):w\in\B^n\}\!\}
+  \quad\text{and}\quad
+  \{\!\{b(w):w\in\B^n\}\!\}
+  \label{eq:ordinary-multisets}
+\end{equation}
+are equal, including multiplicities.
+\end{proposition}
+
+\begin{proof}
+Ordinary multiset equality clearly implies \eqref{eq:multiset-multiplicity-equality}.  Conversely, for every $v\in\F$, the two ordinary multiplicities are integers in $[0,N]$.  Since $p>N$, their images in $\F$ are equal only when the integers themselves are equal.  Hence every value has the same ordinary multiplicity in the two tables.
+\end{proof}
+
+The logarithmic derivative of a multiset is the rational function
+\begin{equation}
+  R_{a,b}(Z)
+  \defeq
+  \sum_{w\in\B^n}\frac{1}{Z-a(w)}
+  -
+  \sum_{u\in\B^n}\frac{1}{Z-b(u)}.
+  \label{eq:multiset-log-derivative}
+\end{equation}
+Let
+\begin{equation}
+  S_{a,b}\defeq
+  \{a(w):w\in\B^n\}\cup
+  \{b(u):u\in\B^n\}.
+  \label{eq:multiset-poles}
+\end{equation}
+
+\begin{lemma}[Residue characterization]
+\label{lem:multiset-residue-characterization}
+The rational function in \eqref{eq:multiset-log-derivative} satisfies
+\begin{equation}
+  R_{a,b}(Z)
+  =
+  \sum_{v\in S_{a,b}}
+  \frac{\nu_a(v)-\nu_b(v)}{Z-v}.
+  \label{eq:multiset-residue-form}
+\end{equation}
+Consequently,
+\begin{equation}
+  R_{a,b}=0
+  \quad\Longleftrightarrow\quad
+  a\equiv_{\mathrm{ms}}b.
+  \label{eq:multiset-rational-characterization}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Group the terms of each sum in \eqref{eq:multiset-log-derivative} by their common value.  This gives \eqref{eq:multiset-residue-form}.  If the multiplicities agree, every residue is zero, so $R_{a,b}=0$.
+
+Conversely, suppose $R_{a,b}=0$.  Fix $v_0\in S_{a,b}$ and multiply \eqref{eq:multiset-residue-form} by $Z-v_0$.  Evaluating at $Z=v_0$ leaves only the term indexed by $v_0$, hence
+\[
+  \nu_a(v_0)-\nu_b(v_0)=0.
+\]
+Since $v_0$ was arbitrary, \eqref{eq:multiset-multiplicity-equality} holds.
+\end{proof}
+
+For a false multiset relation, a random evaluation of $R_{a,b}$ detects the failure except at few field points.
+
+\begin{lemma}[Bad multiset shifts]
+\label{lem:multiset-bad-shifts}
+Assume $a\not\equiv_{\mathrm{ms}}b$.  Then there exists a nonzero polynomial $P_{a,b}\in\F[Z]$ of degree at most
+\begin{equation}
+  |S_{a,b}|-2\le2N-2
+  \label{eq:multiset-numerator-degree}
+\end{equation}
+such that, for every $\zeta\in\F\setminus S_{a,b}$,
+\begin{equation}
+  R_{a,b}(\zeta)=0
+  \quad\Longleftrightarrow\quad
+  P_{a,b}(\zeta)=0.
+  \label{eq:multiset-root-equivalence}
+\end{equation}
+Therefore
+\begin{equation}
+  \left|
+    \{\zeta\in\F\setminus S_{a,b}:R_{a,b}(\zeta)=0\}
+  \right|
+  \le2N-2.
+  \label{eq:multiset-bad-shift-count}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Put $S=S_{a,b}$ and
+\[
+  D_S(Z)=\prod_{v\in S}(Z-v).
+\]
+By \cref{lem:multiset-residue-characterization},
+\begin{equation}
+  P_{a,b}(Z)
+  \defeq D_S(Z)R_{a,b}(Z)
+  =
+  \sum_{v\in S}
+  \bigl(\nu_a(v)-\nu_b(v)\bigr)
+  \frac{D_S(Z)}{Z-v}
+  \label{eq:multiset-numerator}
+\end{equation}
+is a polynomial of degree at most $|S|-1$.  The coefficient of $Z^{|S|-1}$ is
+\[
+  \sum_{v\in S}\bigl(\nu_a(v)-\nu_b(v)\bigr)
+  =N-N=0
+\]
+in $\F$, so $\deg P_{a,b}\le |S|-2$.  Since the multiset relation is false, some residue is nonzero.  Evaluating \eqref{eq:multiset-numerator} at the corresponding pole, exactly as in \cref{lem:lookup-bad-challenges}, shows that $P_{a,b}$ is nonzero.
+
+For $\zeta\notin S$, $D_S(\zeta)\ne0$, giving \eqref{eq:multiset-root-equivalence}.  The root bound \cref{lem:root-bound} and $|S|\le2N$ give \eqref{eq:multiset-bad-shift-count}.
+\end{proof}
+
+\subsection{Committed multiset relation}
+\label{sec:committed-multiset}
+
+\begin{definition}[Committed multiset relation]
+\label{def:committed-multiset-relation}
+Fix $0<\delta\le(1-\rho)/2$.  The relation $\mathcal R^{\delta}_{\mathrm{MS}}$ consists of pairs
+\[
+  ((w_a,w_b),(a,b))
+\]
+with $w_a,w_b\in\F^L$ and tables $a,b:\B^n\to\F$ satisfying
+\begin{equation}
+  \Delta_{\mathrm{fib}}(w_a,\Enc_T(a))\le\delta,
+  \qquad
+  \Delta_{\mathrm{fib}}(w_b,\Enc_T(b))\le\delta,
+  \label{eq:multiset-commitment-distances}
+\end{equation}
+and $a\equiv_{\mathrm{ms}}b$.
+\end{definition}
+
+After a challenge $\zeta\in\F$ is sampled, define the virtual denominator words
+\begin{equation}
+  d_a\defeq\zeta w_{\mathbf1}-w_a,
+  \qquad
+  d_b\defeq\zeta w_{\mathbf1}-w_b,
+  \label{eq:multiset-denominator-words}
+\end{equation}
+where $w_{\mathbf1}=\Enc_T(\mathbf1)$ is the public codeword from \eqref{eq:lookup-one-word}.  As in \cref{lem:lookup-affine-decoding}, these words preserve fibre distance exactly.
+
+The prover supplies inverse tables
+\begin{equation}
+  q(w)=\frac1{\zeta-a(w)},
+  \qquad
+  r(u)=\frac1{\zeta-b(u)}.
+  \label{eq:multiset-inverse-tables}
+\end{equation}
+They satisfy the pointwise inverse relations
+\begin{equation}
+  q\had(\zeta\mathbf1-a)=\mathbf1,
+  \qquad
+  r\had(\zeta\mathbf1-b)=\mathbf1,
+  \label{eq:multiset-inverse-hadamards}
+\end{equation}
+and the logarithmic-derivative equality is simply
+\begin{equation}
+  \ip{q}{\mathbf1}=\ip{r}{\mathbf1}.
+  \label{eq:multiset-sum-equality}
+\end{equation}
+Thus, unlike the general lookup relation of \cref{sec:lookup}, no multiplicity commitment and no committed inner product are needed.
+
+\begin{definition}[Multiset sub-batch]
+\label{def:multiset-sub-batch}
+Fix $\zeta\in\F$, inverse commitment words $w_q,w_r\in\F^L$, and a scalar $S\in\F$.  Define $\mathfrak B_{\mathrm{MS}}(\zeta,w_q,w_r,S)$ to contain:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item the Hadamard claim
+  \[
+    q\had(\zeta\mathbf1-a)=\mathbf1
+  \]
+  on $(w_q,d_a,w_{\mathbf1})$;
+  \item the Hadamard claim
+  \[
+    r\had(\zeta\mathbf1-b)=\mathbf1
+  \]
+  on $(w_r,d_b,w_{\mathbf1})$;
+  \item the public linear-functional claim
+  \[
+    \ip{q}{\mathbf1}=S
+  \]
+  on $w_q$;
+  \item the public linear-functional claim
+  \[
+    \ip{r}{\mathbf1}=S
+  \]
+  on $w_r$.
+\end{enumerate}
+All four claims are protected by one execution of $\Pi_{\mathrm{Het}}$.
+\end{definition}
+
+\begin{definition}[Multiset protocol $\Pi_{\mathrm{MS}}$]
+\label{def:multiset-protocol}
+The instance is $(w_a,w_b)$.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The verifier samples $\zeta\leftarrow\F$.
+  \item The prover sends $w_q,w_r\in\F^L$ and $S\in\F$.  Honestly, if $\zeta\notin S_{a,b}$,
+  \begin{equation}
+    w_q=\Enc_T(q),
+    \qquad
+    w_r=\Enc_T(r),
+    \qquad
+    S=\sum_{w\in\B^n}q(w),
+    \label{eq:multiset-honest-messages}
+  \end{equation}
+  with $q,r$ as in \eqref{eq:multiset-inverse-tables}.  If $\zeta\in S_{a,b}$, the honest prover aborts and the verifier rejects.
+  \item The verifier constructs $d_a,d_b$ from \eqref{eq:multiset-denominator-words}, and the parties execute
+  \begin{equation}
+    \Pi_{\mathrm{Het}}
+    \bigl(\mathfrak B_{\mathrm{MS}}(\zeta,w_q,w_r,S)\bigr).
+    \label{eq:multiset-run-batch}
+  \end{equation}
+\end{enumerate}
+\end{definition}
+
+\begin{theorem}[Multiset completeness]
+\label{thm:multiset-completeness}
+Suppose $(w_a,w_b)$ are honest commitments to tables $a,b$ with $a\equiv_{\mathrm{ms}}b$.  Conditioned on $\zeta\notin S_{a,b}$ and on the shared Hadamard DEEP challenges avoiding their pole sets, the honest prover is accepted with probability $1$.
+
+With all challenges uniform in $\F$ and rejection on poles, the acceptance probability is at least
+\begin{equation}
+  1-\frac{2N}{|\F|}-\frac{3M}{|\F|}.
+  \label{eq:multiset-completeness-bound}
+\end{equation}
+The $3M/|\F|$ term disappears if the public DEEP challenges are sampled by rejection outside the corresponding pole sets.
+\end{theorem}
+
+\begin{proof}
+The pole set has size at most $2N$.  Fix $\zeta\notin S_{a,b}$.  The inverse tables \eqref{eq:multiset-inverse-tables} are well defined and satisfy \eqref{eq:multiset-inverse-hadamards}.  Since $a\equiv_{\mathrm{ms}}b$, \cref{lem:multiset-residue-characterization} gives $R_{a,b}=0$, so evaluating at $\zeta$ yields
+\[
+  \sum_w q(w)=\sum_u r(u).
+\]
+Thus all four claims in \cref{def:multiset-sub-batch} are true on one joint decoding, and \cref{thm:heterogeneous-completeness} gives conditional acceptance with probability $1$.  The stated unconditional lower bound follows by the union bound, exactly as in \cref{thm:lookup-completeness}.
+\end{proof}
+
+\begin{remark}[Pole-free extension-field challenge]
+\label{rem:multiset-extension-challenge}
+If $a$ and $b$ take values in $\Fq$ and $\F\supsetneq\Fq$, sampling
+\[
+  \zeta\leftarrow\F\setminus\Fq
+\]
+removes the lookup-shift completeness loss entirely.  In the soundness theorem below, the term $(2N-2)/|\F|$ is then replaced by $(2N-2)/|\F\setminus\Fq|$.
+\end{remark}
+
+\subsection{Soundness and extraction}
+\label{sec:multiset-soundness}
+
+\begin{lemma}[A joint multiset sub-batch witness fixes the logarithmic derivative]
+\label{lem:multiset-joint-witness}
+Fix $\zeta\in\F$.  If $\mathfrak B_{\mathrm{MS}}(\zeta,w_q,w_r,S)$ has a joint witness, then there exist tables $a,b$ satisfying \eqref{eq:multiset-commitment-distances} such that $\zeta\notin S_{a,b}$ and
+\begin{equation}
+  R_{a,b}(\zeta)=0.
+  \label{eq:multiset-joint-rational-zero}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Let $d_a',d_b',q,r$ be the decoded denominator and inverse tables supplied by the joint witness, and define
+\[
+  a=\zeta\mathbf1-d_a',
+  \qquad
+  b=\zeta\mathbf1-d_b'.
+\]
+The reverse direction of \cref{lem:lookup-affine-decoding} gives the distance conditions \eqref{eq:multiset-commitment-distances}.  The two Hadamard relations give
+\[
+  q(w)(\zeta-a(w))=1,
+  \qquad
+  r(u)(\zeta-b(u))=1
+\]
+for all coordinates.  Hence $\zeta$ is not a pole and $q(w)=(\zeta-a(w))^{-1}$, $r(u)=(\zeta-b(u))^{-1}$.  The two public linear-functional claims share the same scalar $S$, hence
+\[
+  \sum_wq(w)=S=\sum_ur(u),
+\]
+which is exactly \eqref{eq:multiset-joint-rational-zero}.
+\end{proof}
+
+Let $s_{\mathrm{MS}}$ be the number of protected low-degree words in the heterogeneous batch after exact deduplication.  The direct component count gives
+\begin{equation}
+  s_{\mathrm{MS}}\le2\cdot9+2\cdot3=24.
+  \label{eq:multiset-protected-count}
+\end{equation}
+As before, sharing $w_q,w_r,w_{\mathbf1}$ and repeated virtual words can reduce this count.
+
+\begin{theorem}[Multiset soundness]
+\label{thm:multiset-soundness}
+Assume
+\begin{equation}
+  0<\delta\le\frac{1-\rho}{2},
+  \qquad
+  2N<(1-\delta)M.
+  \label{eq:multiset-parameters}
+\end{equation}
+If $(w_a,w_b)$ has no witness in $\mathcal R^{\delta}_{\mathrm{MS}}$, every deterministic prover is accepted by $\Pi_{\mathrm{MS}}$ with probability at most
+\begin{equation}
+\begin{split}
+  \varepsilon_{\mathrm{MS}}
+  \le{}&
+  \frac{2N-2}{|\F|}
+  +\frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{MS}}-1)M}{|\F|}
+  \\
+  &+\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\end{split}
+\label{eq:multiset-soundness-bound}
+\end{equation}
+The same bound holds for randomized provers.  If $\zeta$ is sampled uniformly from a pole-free set $\Gamma\subseteq\F$, replace the first term by $(2N-2)/|\Gamma|$.
+\end{theorem}
+
+\begin{proof}
+By \cref{prop:unique-table-near-word}, each of $w_a,w_b$ has at most one table within fibre distance $\delta$.  If one has none, \cref{lem:multiset-joint-witness} implies that no shift can make the multiset sub-batch have a joint witness.
+
+Otherwise let $a,b$ be the unique decoded tables.  Since the original instance is false, $a\not\equiv_{\mathrm{ms}}b$.  By \cref{lem:multiset-bad-shifts}, at most $2N-2$ nonpole values of $\zeta$ satisfy $R_{a,b}(\zeta)=0$.  By \cref{lem:multiset-joint-witness}, only those shifts can make the heterogeneous sub-batch have a joint witness.  This contributes at most $(2N-2)/|\F|$.
+
+For every other shift, the heterogeneous batch is false and contains two Hadamard claims and two public linear-functional claims.  Applying \cref{thm:heterogeneous-soundness} contributes
+\[
+  \frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{MS}}-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\]
+Adding the two bounds proves \eqref{eq:multiset-soundness-bound}.  Randomized provers follow by conditioning on their internal randomness.  Restricting $\zeta$ to $\Gamma$ changes only the root-count denominator.
+\end{proof}
+
+\begin{corollary}[Multiset knowledge by decoding]
+\label{cor:multiset-knowledge}
+Under the hypotheses of \cref{thm:multiset-soundness}, acceptance with probability larger than the right-hand side of \eqref{eq:multiset-soundness-bound} implies that the unique decodings of $w_a,w_b$ exist and satisfy $a\equiv_{\mathrm{ms}}b$.  They are recoverable in polynomial time by Reed--Solomon unique decoding.
+\end{corollary}
+
+\begin{proof}
+This is the contrapositive of \cref{thm:multiset-soundness}, together with uniqueness from \cref{prop:unique-table-near-word} and the decoding algorithms cited in \cref{cor:lookup-knowledge}.
+\end{proof}
+
+\subsection{Prescribed permutations by tagged compression}
+\label{sec:tagged-permutation}
+
+Multiset equality proves that two columns contain the same values but does not specify which occurrence should move to which position.  Let
+\begin{equation}
+  \sigma:\B^n\longrightarrow\B^n
+  \label{eq:known-permutation}
+\end{equation}
+be a public permutation.  The prescribed permutation relation is
+\begin{equation}
+  b(\sigma(w))=a(w)
+  \qquad\text{for every }w\in\B^n.
+  \label{eq:prescribed-permutation-relation}
+\end{equation}
+
+Let $\iota:\B^n\to\F$ be the canonical index embedding
+\begin{equation}
+  \iota(w)=\sum_{k=1}^n w_k2^{k-1}\,1_{\F}.
+  \label{eq:index-embedding}
+\end{equation}
+When $p>N$, this map is injective.  For a compression challenge $\tau\in\F$, define
+\begin{equation}
+  A_\tau(w)
+  \defeq a(w)+\tau\iota(\sigma(w)),
+  \qquad
+  B_\tau(u)
+  \defeq b(u)+\tau\iota(u).
+  \label{eq:tagged-compressed-columns}
+\end{equation}
+If \eqref{eq:prescribed-permutation-relation} holds, then $A_\tau\equiv_{\mathrm{ms}}B_\tau$ for every $\tau$, because the substitution $u=\sigma(w)$ identifies the tagged pairs exactly.
+
+\begin{lemma}[Compression of unequal tagged multisets]
+\label{lem:tagged-compression}
+Assume $p>N$ and that \eqref{eq:prescribed-permutation-relation} is false.  Let
+\begin{align}
+  \mathcal A
+  &\defeq
+  \{\!\{(\iota(\sigma(w)),a(w)):w\in\B^n\}\!\},
+  \label{eq:tagged-multiset-a}\\
+  \mathcal B
+  &\defeq
+  \{\!\{(\iota(u),b(u)):u\in\B^n\}\!\}.
+  \label{eq:tagged-multiset-b}
+\end{align}
+Then $\mathcal A\ne\mathcal B$.  Moreover, there is a set $T_{\mathrm{coll}}\subseteq\F$ with
+\begin{equation}
+  |T_{\mathrm{coll}}|
+  \le \binom{2N}{2}
+  \label{eq:tag-collision-count}
+\end{equation}
+such that for every $\tau\notin T_{\mathrm{coll}}$,
+\begin{equation}
+  A_\tau\not\equiv_{\mathrm{ms}}B_\tau.
+  \label{eq:tagged-compression-detects}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Because $\sigma$ is a permutation, for each $u\in\B^n$ there is a unique $w=\sigma^{-1}(u)$.  Equality $\mathcal A=\mathcal B$ would therefore force equality of the values attached to every unique first coordinate:
+\[
+  a(\sigma^{-1}(u))=b(u)
+  \qquad\text{for all }u,
+\]
+which is equivalent to \eqref{eq:prescribed-permutation-relation}.  Hence the tagged multisets are unequal.
+
+Let $\mathcal U$ be the union of the supports of $\mathcal A$ and $\mathcal B$ as a set of distinct pairs; $|\mathcal U|\le2N$.  For two distinct pairs $(i,x),(j,y)\in\mathcal U$, their compressed values collide when
+\begin{equation}
+  x+\tau i=y+\tau j.
+  \label{eq:tag-collision-equation}
+\end{equation}
+If $i=j$, distinctness of the pairs gives $x\ne y$, so \eqref{eq:tag-collision-equation} has no solution.  If $i\ne j$, injectivity of the index embedding gives $i-j\ne0$ in $\F$, hence there is exactly one solution
+\[
+  \tau=(y-x)(i-j)^{-1}.
+\]
+Let $T_{\mathrm{coll}}$ contain all such solutions over unordered pairs of elements of $\mathcal U$.  The union bound gives \eqref{eq:tag-collision-count}.
+
+For $\tau\notin T_{\mathrm{coll}}$, the map $(i,x)\mapsto x+\tau i$ is injective on $\mathcal U$.  Therefore equality of the compressed multisets would imply equality of the multiplicity of every pair in $\mathcal U$, contradicting $\mathcal A\ne\mathcal B$.  This proves \eqref{eq:tagged-compression-detects}.
+\end{proof}
+
+The lemma deliberately uses a simple collision argument rather than a tighter protocol-specific fingerprint.  Its purpose is to isolate a fully proved reduction from a prescribed permutation to the multiset primitive; tighter tagging bounds can be substituted without changing the coefficient-extraction backend.
+
+\begin{definition}[Tagged permutation protocol $\Pi_{\mathrm{Perm}}$]
+\label{def:tagged-permutation-protocol}
+Assume $p>N$ and let $\sigma$ be public.  On instance $(w_a,w_b)$:
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The verifier samples $\tau\leftarrow\F$.
+  \item Using linearity of $\Enc_T$, the verifier forms the virtual words
+  \begin{equation}
+    w_{A,\tau}
+    =w_a+\tau w_{\iota\circ\sigma},
+    \qquad
+    w_{B,\tau}
+    =w_b+\tau w_{\iota},
+    \label{eq:tagged-virtual-words}
+  \end{equation}
+  where $w_{\iota\circ\sigma}=\Enc_T(\iota\circ\sigma)$ and $w_{\iota}=\Enc_T(\iota)$ are public codewords.
+  \item The parties run $\Pi_{\mathrm{MS}}$ on $(w_{A,\tau},w_{B,\tau})$.
+\end{enumerate}
+\end{definition}
+
+\begin{theorem}[Tagged permutation soundness]
+\label{thm:tagged-permutation-soundness}
+Assume $p>N$ and the parameter conditions of \cref{thm:multiset-soundness}.  If the unique decoded tables $a,b$ fail \eqref{eq:prescribed-permutation-relation}, then every prover is accepted by $\Pi_{\mathrm{Perm}}$ with probability at most
+\begin{equation}
+  \varepsilon_{\mathrm{Perm}}
+  \le
+  \frac{\binom{2N}{2}}{|\F|}
+  +\varepsilon_{\mathrm{MS}}.
+  \label{eq:tagged-permutation-soundness}
+\end{equation}
+If either input word has no decoding within fibre distance $\delta$, the first term is unnecessary and the multiset soundness bound alone applies.
+\end{theorem}
+
+\begin{proof}
+If one input word has no valid decoding, linearity and the same pointwise-difference argument as \cref{lem:lookup-affine-decoding} show that the corresponding tagged virtual word has no decoding compatible with the prescribed affine shift, so \cref{thm:multiset-soundness} applies directly.
+
+Otherwise let $a,b$ be the unique decoded tables.  By \cref{lem:tagged-compression}, outside a set of at most $\binom{2N}{2}$ challenges $\tau$, the compressed tables $A_\tau,B_\tau$ do not satisfy algebraic multiset equality.  For every such $\tau$, the multiset protocol accepts with probability at most $\varepsilon_{\mathrm{MS}}$ by \cref{thm:multiset-soundness}.  Taking the union bound over the bad compression event and the conditional multiset soundness event gives \eqref{eq:tagged-permutation-soundness}.
+\end{proof}
+
+\begin{remark}[Tuple tags and indexed lookups]
+\label{rem:tuple-tags-indexed-lookup}
+The same construction compresses tuples rather than pairs.  For public tags $t_1,\ldots,t_d$ and random challenges $\tau_1,\ldots,\tau_d$, replace a tuple $(x_0,x_1,\ldots,x_d)$ by
+\[
+  x_0+\tau_1x_1+\cdots+\tau_dx_d.
+\]
+A collision analysis analogous to \cref{lem:tagged-compression} reduces equality of tagged tuple multisets to the scalar multiset protocol.  In particular, an indexed lookup can tag a table value by its row index before applying \cref{sec:lookup}, preventing two equal values in different rows from being interchangeable when the application requires row identity.
+\end{remark}
+
+\subsection{Consequence for the coefficient-extraction framework}
+\label{sec:permutation-consequence}
+
+The scalar multiset check has the decomposition
+\begin{equation}
+\begin{aligned}
+  \text{multiset equality}
+  &={}2\text{ inverse Hadamard relations}\\
+  &\quad+2\text{ public linear functionals},
+\end{aligned}
+\label{eq:multiset-decomposition}
+\end{equation}
+and therefore uses no algebraic Sumcheck.  A prescribed permutation adds only a public random compression of tagged values before the same primitive.  All low-degree obligations from the two inverse relations and the two sums enter the single folding batch of \cref{sec:heterogeneous-batching}.
+
+This closes the second logarithmic-derivative primitive needed later for sparse matrix and memory arguments: \cref{sec:lookup} proves membership with multiplicities, while the present section proves equality of committed multisets and public wiring permutations.  The next step is to use these primitives together with Hadamard products to authenticate sparse matrix--vector multiplication without introducing a separate Sumcheck layer.

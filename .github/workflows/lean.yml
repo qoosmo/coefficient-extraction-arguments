@@ -1,0 +1,24 @@
+name: Lean
+
+on:
+  push:
+    paths:
+      - 'lean/**'
+      - 'scripts/check-lean.sh'
+      - '.github/workflows/lean.yml'
+  pull_request:
+    paths:
+      - 'lean/**'
+      - 'scripts/check-lean.sh'
+      - '.github/workflows/lean.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+      - name: Build and axiom audit
+        run: ./scripts/check-lean.sh

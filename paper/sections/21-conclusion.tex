@@ -1,0 +1,69 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+This work develops coefficient extraction as a common algebraic interface between multilinear proof relations and Reed--Solomon proximity testing.  The starting identity is elementary: for vectors $a,b\in\F^N$,
+\[
+  \ip{a}{b}
+  =
+  [X^{N-1}]\,V_a(X)V_b^\star(X),
+\]
+where $V_a(X)=\sum_{j=0}^{N-1}a_jX^j$ and $V_b^\star(X)=\sum_{j=0}^{N-1}b_jX^{N-1-j}$.  The contribution of the framework is to turn this coefficient identity into a reusable proof-system primitive.  The selected coefficient is isolated by the split
+\begin{equation}
+  XU(X)K(X)
+  =
+  A(X)+vX^N+X^{N+1}H(X),
+  \label{eq:conclusion-master-identity}
+\end{equation}
+with all protected objects represented as degree-$<N$ Reed--Solomon words.  Reversal, high-part recovery, and DEEP quotient relations are exposed as virtual or locally derived words, and random linear batching reduces the resulting family of low-degree claims to a single proximity instance.
+
+The first consequence is a uniform treatment of public linear functionals.  Table-form multilinear evaluation, Boolean-hypercube summation, and more general succinct public kernels all become instances of the same coefficient-extraction protocol.  Reversal then removes the restriction that the second vector be public: an arbitrary committed inner product is represented by the middle coefficient of $V_aV_b^\star$, with the reversed word obtained from the original commitment by the inversion map on the evaluation domain.  Thus the canonical degree-two Boolean sum
+\[
+  \sum_{w\in\B^n} a(w)b(w)
+\]
+can be certified without an $n$-round Sumcheck reduction.
+
+The second step is pointwise multiplication.  The Hadamard relation
+\[
+  a\had b=c
+\]
+is compressed by a random geometric fingerprint and rewritten as a coefficient claim involving $V_a(\gamma X)V_b^\star(X)$, while DEEP quotient words bind the scaled and out-of-domain values to the original commitments.  This supplies the multiplication gate of the framework.  Together, linear relations and Hadamard relations are sufficient to represent bounded pointwise arithmetic computations on committed tables; higher-degree Boolean sums can therefore be reduced to auxiliary multiplication tables followed by a final linear functional.
+
+The same instruction set extends beyond polynomial evaluation.  Logarithmic-derivative lookup reduces to reciprocal Hadamard relations and an inner-product equality.  Multiset equality and tagged permutation checks use the same reciprocal structure.  Sparse matrix--vector multiplication is represented by an $O(\operatorname{nnz}(M))$ sparse-entry stream, indexed selection, pointwise multiplication, and linear aggregation.  Consequently an R1CS relation
+\[
+  (Az)\had(Bz)=Cz
+\]
+reduces to three sparse matrix--vector relations and one Hadamard relation.  An offline memory-consistency argument further decomposes into tuple-multiset consistency, lookups, local Hadamard transition constraints, and linear adjacency fingerprints.  These reductions show that the coefficient-extraction view is not confined to a multilinear polynomial commitment: it defines a small algebraic proof language whose basic operations already cover several central components of modern proof systems.
+
+A central technical point is that these heterogeneous relations need not incur independent proximity proofs.  Once each relation has been expressed as a family of degree-bounded words, the words are protected by one random batching curve and one folding chain.  The global analysis of \cref{sec:soundness} separates the error into an outer algebraic-reduction term and a common Reed--Solomon/proximity term.  In the notation of that section, the soundness error is bounded by
+\[
+  \varepsilon_{\mathrm{tot}}
+  \le
+  \varepsilon_{\mathrm{red}}
+  +h\frac{2(N-1)}{|\F|}
+  +\frac{(s-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\]
+This factorization is conceptually useful: lookup, permutation, sparse algebra, R1CS, and memory checking contribute relation-specific algebraic errors, while the low-degree certification is shared.
+
+The post-quantum interpretation should be stated carefully.  Sumcheck is an information-theoretic interactive protocol and is not, by itself, a non-post-quantum primitive.  The result here is instead a transformation of the \emph{algebraic role} played by Sumcheck for the relations studied in this paper.  The recursive hypercube reduction is replaced by coefficient identities and pointwise constraints that feed directly into a transparent Reed--Solomon/FRI layer.  The non-interactive construction of \cref{sec:post-quantum} then commits to oracle words with salted Merkle trees and uses a QROM-secure IOR-to-NIR compiler.  Under the stated round-by-round decoding-knowledge conditions, this yields post-quantum straight-line knowledge soundness for the compiled framework.  Thus the architecture separates three concerns:
+\[
+  \boxed{
+  \text{relation algebra}
+  \;\longrightarrow\;
+  \text{RS proximity}
+  \;\longrightarrow\;
+  \text{hash-based non-interactive compilation}.}
+\]
+
+The present results do not establish that this architecture is universally preferable to Sumcheck.  Sumcheck remains a direct and highly optimized method for general low-degree hypercube sums.  Coefficient extraction trades recursive reduction for univariate encoding, auxiliary tables, and proximity testing.  The practical question is therefore whether shared encoding, virtual words, and one heterogeneous proximity proof compensate for those costs on workloads containing several relation types at once.  \Cref{sec:complexity} makes the accounting explicit, and \cref{sec:comparison} separates structural comparisons from performance claims that require implementation.  The companion Rust implementation and controlled baselines are intended to answer this empirical question under identical fields, security parameters, commitment layouts, hardware, and compiler settings.
+
+Several mathematical improvements could materially change that tradeoff.  The current soundness analysis is confined to unique decoding; extending heterogeneous batching to a list-decoding regime would reduce the number of authenticated queries.  A higher-rate split identity could reduce the Reed--Solomon domain size.  Direct higher-arity coefficient identities might eliminate intermediate Hadamard tables, while direct sparse kernels could reduce the auxiliary structure needed for matrix relations.  Zero knowledge, recursion-friendly instantiations, and tighter concrete QROM parameters remain separate design problems.  These limitations are isolated in \cref{sec:limitations} so that improvements to the algebraic front end, proximity backend, and cryptographic compiler can be studied independently.
+
+The broader conclusion is that the classical middle-coefficient identity becomes significantly more expressive when it is combined with Kronecker encodings and code-based proximity.  Structured public kernels turn evaluation into coefficient extraction; reversal turns committed vectors into compatible kernels; geometric fingerprints turn pointwise multiplication into one coefficient claim; reciprocal tables turn lookup and permutation into Hadamard and inner-product relations; and sparse streams extend the same language to R1CS and memory consistency.  FRI is then used not to reproduce Sumcheck round by round, but as the common certification mechanism for the low-degree objects produced by these reductions.
+
+This suggests a proof-system design principle that is independent of any one application:
+\begin{quote}
+First search for a coefficient or local polynomial identity that exposes the target relation as a small family of low-degree univariate objects.  Then exploit virtual transformations and random batching so that those objects can be certified by one transparent proximity argument.
+\end{quote}
+The framework developed in this paper gives a concrete realization of that principle for linear, bilinear, lookup, permutation, sparse-linear, R1CS, and memory relations.  Its next stage is no longer to establish algebraic expressibility, but to determine---through formal verification and controlled implementation---how far this common coefficient-extraction layer can simplify and accelerate complete transparent proof systems.

@@ -1,0 +1,297 @@
+\section{Comparison with Existing Proof-System Architectures}
+\label{sec:comparison}
+
+This section positions the coefficient-extraction framework relative to the principal proof-system architectures that motivate it.  The comparison is deliberately structural.  The manuscript does not yet contain a complete Rust implementation of every relation, and therefore we do not compare wall-clock times obtained on different machines, with different fields, hash functions, security levels, or commitment layouts.  The controlled benchmarking methodology is fixed in \cref{sec:complexity-benchmark-plan}; numerical claims from other papers are used here only to identify the design points that those systems target.
+
+The main distinction is the location of the algebraic reduction.  In a conventional multilinear architecture, a relation such as
+\[
+  \sum_{w\in\B^n} a(w)b(w)=S
+\]
+is represented directly as a multivariate claim and reduced by Sumcheck to one or more random evaluations.  A polynomial commitment scheme is then responsible for authenticating those terminal evaluations.  In the present framework, the relation is first rewritten as a coefficient or pointwise identity among univariate degree-$<N$ objects; the resulting words are batched before one Reed--Solomon proximity test.  Thus the two generic pipelines are
+\begin{equation}
+\begin{aligned}
+  \text{multivariate relation}
+  &\longrightarrow \text{Sumcheck}
+   \longrightarrow \text{terminal evaluations}
+  \\
+  &\longrightarrow \text{PCS},
+  \\[0.4ex]
+  \text{multivariate relation}
+  &\longrightarrow \text{coefficient/Hadamard reduction}
+  \\
+  &\longrightarrow \text{low-degree word family}
+   \longrightarrow \text{RS proximity}.
+\end{aligned}
+\label{eq:comparison-two-pipelines}
+\end{equation}
+Neither pipeline is universally preferable.  Their arithmetic costs, communication patterns, and opportunities for batching are different, and \cref{rem:no-benchmark-claim} remains in force.
+
+\subsection{Comparison axes}
+\label{sec:comparison-axes}
+
+To avoid conflating unrelated properties, we compare systems along the following axes.
+
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item \textbf{Algebraic front end.}  What transforms the original relation into low-degree claims: Sumcheck, a grand product, a logarithmic derivative, a coefficient identity, or a constrained-code condition?
+  \item \textbf{Commitment/proximity backend.}  Is consistency enforced by a pairing-based polynomial commitment, a linear-code commitment, Reed--Solomon proximity, or another oracle proof?
+  \item \textbf{Setup and post-quantum orientation.}  Is the backend transparent and hash based, or does it rely on a structured reference string and pairing/discrete-log assumptions?  We distinguish this cryptographic architecture from the information-theoretic security of the algebraic reduction itself.
+  \item \textbf{Relation coverage.}  Is the primitive designed only for multilinear evaluation, or does the surrounding system also address R1CS, permutation, lookup, or memory consistency?
+  \item \textbf{Composition.}  Are heterogeneous claims combined by repeated Sumchecks/openings, by a dedicated accumulation protocol, or by one low-degree batch?
+  \item \textbf{Concrete cost.}  Prover time, verifier time, proof size, memory, and preprocessing must be compared only under compatible parameters or clearly identified as paper-reported external measurements.
+\end{enumerate}
+
+These axes explain why a comparison of polynomial-commitment proof sizes alone would be incomplete.  The present construction moves work from the recursive Sumcheck transcript into polynomial products, auxiliary low-degree words, and one common proximity backend.  A PCS-only benchmark therefore does not measure the intended R1CS/lookup/memory architecture.
+
+\subsection{Sumcheck-centered multilinear systems}
+\label{sec:comparison-sumcheck-systems}
+
+\paragraph{Spartan.}
+Spartan is a canonical example of a Sumcheck-centered R1CS proof system~\cite{Setty20}.  Its algebraic reduction exploits the multilinear extension of the R1CS matrices and witness, while a sparse-polynomial mechanism handles the public matrices.  The relation
+\[
+  (Az)\had(Bz)=Cz
+\]
+is reduced through multilinear polynomial identities and Sumcheck.  Our \cref{sec:sparse-matvec,sec:r1cs} targets the same algebraic bottleneck with a different decomposition:
+\[
+  \mathrm{R1CS}
+  \longrightarrow
+  3\times\mathrm{SparseMatVec}
+  +1\times\mathrm{Hadamard}
+  \longrightarrow
+  \text{one heterogeneous RS batch}.
+\]
+The difference is therefore not the statement proved, but the mechanism that transports the statement to the commitment layer.  Spartan's recursive reduction keeps the witness in multilinear form; our construction materializes sparse-entry and Hadamard auxiliary tables and pays the corresponding commitment cost.
+
+\paragraph{HyperPlonk.}
+HyperPlonk uses multilinear polynomial IOPs to obtain linear-time prover algorithms for Plonkish constraints and high-degree custom gates~\cite{HyperPlonk23}.  Its zero checks and permutation checks are expressed as Sumcheck instances over virtual multilinear polynomials; in particular, its permutation argument rewrites the wiring relation as a zero relation and applies Sumcheck.  By contrast, \cref{sec:permutation} uses tagged multiset equality and logarithmic derivatives, and reduces the result to inverse Hadamard relations and linear functionals.  Both approaches exploit randomization to compress many coordinate constraints, but the terminal proof objects are different: random-point multilinear evaluations in HyperPlonk versus low-degree univariate words in the present framework.
+
+\paragraph{Lasso and Jolt.}
+Lasso develops lookup arguments whose efficiency comes from exploiting structured tables and sparse multilinear polynomials, with Sumcheck as a central proving primitive~\cite{Lasso23}.  Jolt uses lookup arguments as the main mechanism for proving virtual-machine instruction semantics~\cite{Jolt23}.  Our lookup protocol of \cref{sec:lookup} is closer algebraically to the logarithmic-derivative family than to Lasso's original sparse-table reduction: after a challenge $\beta$, inverse tables enforce
+\[
+  q\had(\beta\mathbf 1-f)=\mathbf 1,
+  \qquad
+  h\had(\beta\mathbf 1-t)=\mathbf 1,
+\]
+and one inner-product equality enforces multiplicities.  The distinction is again the backend.  The present protocol converts these relations to the common Hadamard/inner-product instruction set before the RS proximity phase instead of invoking an independent Sumcheck transcript.
+
+\paragraph{Twist and Shout.}
+Twist and Shout revisit lookup and memory checking with the explicit goal of reducing prover bottlenecks in zkVM-style workloads~\cite{TwistShout26}.  Their results are an important benchmark target because \cref{sec:memory} addresses the same high-level object: consistency of an execution-order memory trace with an address/time-sorted trace.  Our reduction
+\[
+  \mathrm{Memory}
+  =
+  \mathrm{TupleMultiset}
+  +\mathrm{Lookup}
+  +\mathrm{Hadamard}
+  +\mathrm{LinearAdjacencyFingerprint}
+\]
+should therefore be viewed as an alternative algebraic architecture, not as a claim of lower prover cost.  The comparison that matters is the full end-to-end memory argument under the same field and security target.
+
+\paragraph{BinarySpartan and Celer.}
+Two 2026 systems sharpen the practical baselines for the front-end relations studied here.  BinarySpartan instantiates Spartan over binary fields with a transparent hash-based multilinear commitment and incorporates several recent Sumcheck optimizations~\cite{BinarySpartan26}.  It is therefore a particularly relevant controlled baseline for the claim that coefficient extraction can replace, rather than merely reimplement, the R1CS Sumcheck layer.  Celer targets lookup workloads in which the number of queries is much larger than the table and reduces commitment overhead while keeping field work linear in the query size~\cite{Celer26}.  Our logarithmic-derivative reduction has a different objective---unifying lookup with the same RS backend as the other relations---so Celer is a natural specialized lookup baseline rather than an architecture that the present theory subsumes.
+
+\subsection{Code-based multilinear commitments and folding}
+\label{sec:comparison-code-mlpcs}
+
+The closest conceptual neighbors of this work are multilinear commitments that combine a code-based commitment with folding or Reed--Solomon proximity.  They share our goal of obtaining transparent, hash-based commitment layers without pairings, but differ in how the multilinear relation is linked to the code.
+
+\paragraph{BaseFold.}
+BaseFold formalizes foldable codes and interleaves its folding IOPP with the classical Sumcheck protocol~\cite{BaseFold24}.  Its construction uses a random evaluation produced by the folding process to answer the final Sumcheck claim, with shared verifier randomness.  This is almost the opposite interface from \eqref{eq:comparison-two-pipelines}: BaseFold synchronizes Sumcheck and folding, whereas coefficient extraction tries to eliminate the separate Sumcheck layer for the relations treated in this paper before folding starts.
+
+The distinction is particularly visible for a committed inner product.  BaseFold can treat the claim through the multilinear Sumcheck/PCS interface.  Here it becomes
+\[
+  \ip{a}{b}
+  =\coeff{N-1}{V_aV_b^\star},
+\]
+followed by the universal split identity and one proximity test.  Whether the extra polynomial multiplication is worthwhile is a concrete question, not an algebraic one; \cref{prop:ip-vs-sumcheck-complexity} records the generic arithmetic disadvantage of the isolated coefficient-extraction route.
+
+\paragraph{DeepFold.}
+DeepFold instantiates a Reed--Solomon version of the foldable-code approach and moves the analysis toward the list-decoding regime, reducing the query burden of the unique-decoding approach~\cite{DeepFold25}.  It is therefore especially relevant to the open parameter question in \cref{sec:complexity}: our current batching theorems use unique-decoding correlated agreement, so the query count can dominate proof size.  DeepFold demonstrates that list-decoding analysis is not merely an asymptotic refinement; it materially changes the useful concrete regime of an RS-based multilinear PCS.  A list-decoded version of the heterogeneous coefficient-extraction batching lemma would be complementary to, rather than a replacement for, the algebraic reductions developed here.
+
+\paragraph{FRI-Binius.}
+Diamond and Posen adapt the BaseFold paradigm to binary towers and relate the resulting folding to the additive transform of Lin--Chung--Han~\cite{FRIBinius24}.  This line shows that the multilinear/folding interface is not tied to large prime fields.  The present manuscript instead assumes the multiplicative-domain structure of \cref{sec:preliminaries} because inversion closure gives the virtual reversal
+\[
+  w^\star(\xi)=\xi^{N-1}w(\xi^{-1})
+\]
+for free.  Extending the coefficient-extraction instruction set to additive/binary domains would require a replacement for that virtual inversion symmetry; the coefficient identities themselves are field-independent.
+
+\paragraph{WHIR.}
+WHIR approaches multilinear commitments through constrained Reed--Solomon proximity rather than by simply attaching a standard FRI opening to a multilinear reduction~\cite{WHIR24}.  Its design is therefore the closest comparison at the level of philosophy: encode the evaluation relation into the code/proximity statement itself.  The difference is the kind of constraint.  WHIR develops a dedicated constrained-RS proximity test, whereas our framework first rewrites a family of relations into ordinary low-degree words and then deliberately reuses a generic RS folding test.  WHIR's specialization can give a substantially more query-efficient verifier; our intended advantage is relation uniformity---evaluation, inner product, Hadamard, lookup, permutation, sparse R1CS, and memory all terminate in the same ordinary low-degree interface.
+
+\paragraph{TensorSwitch.}
+TensorSwitch is a 2026 hash-based multilinear PCS built from tensor codes; its analysis explicitly uses list decoding and correlated agreement and targets both prover time and proof size~\cite{TensorSwitch26}.  It strengthens the evidence that the unique-decoding regime used in this manuscript is a conservative backend choice rather than an inherent requirement of transparent multilinear commitments.  TensorSwitch is not a drop-in replacement for the coefficient-extraction algebra developed here, but it is a direct benchmark for the commitment layer and a concrete motivation for the list-decoding open problem in \cref{sec:limitations}.
+
+\subsection{Field-agnostic linear-code systems}
+\label{sec:comparison-brakedown}
+
+Brakedown gives a linear-time, field-agnostic SNARK/PCS architecture based on linear codes rather than FFT-friendly Reed--Solomon domains~\cite{Brakedown23}.  It illustrates another important point in the design space: a transparent post-quantum-oriented proof system need not use FRI or smooth multiplicative subgroups at all.  Our construction makes the opposite engineering choice.  Smooth RS domains are used aggressively because they provide
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item fast polynomial products and encodings;
+  \item inversion closure for virtual reversal;
+  \item a simple degree filtration under even--odd folding;
+  \item direct compatibility with the Kronecker kernels of \cref{sec:coefficient-calculus}.
+\end{enumerate}
+This choice sacrifices field agnosticism.  Brakedown and related tensor/linear-code commitments are therefore not simply slower or faster versions of the same primitive; they optimize a different axis.
+
+
+\paragraph{Neo and SuperNeo.}
+Neo and SuperNeo provide a different post-quantum route: lattice-based folding for general constraint systems over small fields, with pay-per-bit commitments under Module-SIS assumptions~\cite{NeoSuperNeo26}.  They still invoke Sumcheck as part of the folding architecture.  They are therefore useful in this comparison because they separate two choices that are sometimes conflated: eliminating group-based commitments does not require eliminating Sumcheck, and eliminating Sumcheck from the algebraic front end does not require lattice commitments.  The present work chooses hash-based RS proximity; Neo/SuperNeo choose lattice-based folding.
+
+\subsection{Pairing-based multilinear commitments}
+\label{sec:comparison-pairing}
+
+The middle-coefficient identity used throughout this paper is classical and is not specific to hash-based commitments.  Pairing-based multilinear PCS constructions provide an instructive contrast because they can exploit algebraic homomorphism and structured reference strings to obtain much shorter openings.
+
+\paragraph{Gemini and Mercury.}
+Gemini reduces multilinear evaluation to a sequence of univariate commitments and restriction relations, typically instantiated with KZG~\cite{Gemini22}.  Mercury starts from the same table/univariate viewpoint and develops a pairing-based multilinear PCS with constant-size evaluation proofs and linear field work in the opening procedure~\cite{Mercury25}.  These systems demonstrate that univariate representations of multilinear tables are already powerful even without RS proximity.
+
+The present work differs cryptographically and compositionally.  The commitment is a Merkle commitment to an RS codeword rather than a homomorphic group commitment; reversal and quotient relations are read or derived as virtual words; and arbitrary relation families are folded into one proximity test.  The cost is that proof size is governed by hash openings and query complexity rather than a constant number of group elements.  Conversely, the resulting backend does not rely on pairing-friendly groups or a structured reference string.
+
+\paragraph{Samaritan.}
+Samaritan combines a logarithmic-derivative-based multilinear PIOP with a new pairing-based multilinear PCS to obtain an R1CS SNARK with linear-time prover and logarithmic proof/verification complexity~\cite{Samaritan25}.  This is especially relevant because both Samaritan and the present paper use logarithmic-derivative ideas to avoid less favorable lookup/permutation mechanisms.  The important difference is where the logarithmic-derivative relations terminate.  Samaritan compiles them through its multilinear PIOP/PCS stack; here they are decomposed into inverse Hadamard and inner-product relations and then absorbed into the heterogeneous RS batch.  Consequently the two constructions share some front-end algebra while making opposite commitment assumptions.
+
+\subsection{Architecture matrix}
+\label{sec:comparison-matrix}
+
+\Cref{tab:architecture-comparison} summarizes the comparison at the level relevant to this paper.  ``Sumcheck role'' refers to the conventional recursive Sumcheck protocol in the algebraic front end; it does not imply anything about whether a system is post-quantum secure.  ``Backend'' describes the mechanism that ultimately authenticates low-degree objects.  Entries marked ``PCS-dependent'' inherit the setup/security properties of the chosen PCS instantiation.
+
+\clearpage
+\begin{table}[!ht]
+\centering
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.35cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{4.55cm}>{\raggedright\arraybackslash}p{4.05cm}@{}}
+\toprule
+Architecture & Main target & Algebraic front end & Backend/setup \\
+\midrule
+Spartan & R1CS & multilinear R1CS identities and sparse matrix evaluation & PCS-dependent \\
+HyperPlonk & Plonkish constraints and permutation & zero/permutation checks over virtual MLPs & PCS-dependent \\
+Lasso/Jolt & lookup and VM execution & sparse-table lookup and multilinear reductions & PCS-dependent \\
+Twist--Shout & lookup and memory & dedicated multilinear memory/lookup arguments & PCS-dependent \\
+BaseFold & multilinear PCS & interleaved MLE Sumcheck and code folding & transparent foldable-code commitment \\
+DeepFold & multilinear PCS & BaseFold-style reduction with RS list-decoding analysis & transparent RS/hash backend \\
+FRI-Binius & multilinear PCS over binary towers & BaseFold-style multilinear reduction & binary-FRI/additive-code backend \\
+WHIR & multilinear PCS & constrained Reed--Solomon relation & transparent constrained-RS/hash backend \\
+Brakedown & R1CS/PCS & multilinear/tensor IOP & transparent linear-code backend \\
+Mercury & multilinear PCS & univariate/table reduction & KZG, structured reference string, pairings \\
+Samaritan & R1CS & LogSpartan and logarithmic derivatives & updatable SRS, pairing-based PCS \\
+This work & MLE, IP, Hadamard, lookup, permutation, sparse R1CS, memory & coefficient extraction and pointwise reductions & transparent RS/Merkle/FRI-style folding \\
+\bottomrule
+\end{tabular}
+\caption{Structural comparison of the algebraic front end and commitment/proximity backend.}
+\label{tab:architecture-comparison}
+\end{table}
+
+\begin{table}[!ht]
+\centering
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.65cm}>{\raggedright\arraybackslash}p{4.15cm}>{\raggedright\arraybackslash}p{7.15cm}@{}}
+\toprule
+Architecture & Conventional Sumcheck role & Relation to this work \\
+\midrule
+Spartan & central & same R1CS target; different sparse and multiplication reduction \\
+HyperPlonk & central & alternative permutation/Hadamard reduction \\
+Lasso/Jolt & central & lookup reduced instead to IP/Hadamard/RS relations \\
+Twist--Shout & central & same memory/lookup bottleneck; different instruction set \\
+BaseFold & explicit and interleaved with folding & closest folding baseline \\
+DeepFold & explicit and interleaved with folding & motivates a list-decoded version of heterogeneous batching \\
+FRI-Binius & explicit in the BaseFold-style reduction & suggests an additive/binary-domain extension path \\
+WHIR & no conventional separate Sumcheck in the PCS & similar goal of moving an evaluation relation into the proximity statement \\
+Brakedown & architecture-dependent & field-agnostic alternative to smooth RS domains \\
+Mercury & no FRI/Sumcheck coupling in the PCS & related univariate/table viewpoint with a different cryptographic backend \\
+Samaritan & used in its multilinear PIOP stack & related logarithmic-derivative algebra with different commitment assumptions \\
+This work & removed for the relations covered here & one heterogeneous ordinary-RS batch \\
+\bottomrule
+\end{tabular}
+\caption{Role of conventional Sumcheck and the specific point of comparison with the coefficient-extraction framework.  Neither table ranks the systems or combines performance measurements obtained under incompatible parameters.}
+\label{tab:sumcheck-role-comparison}
+\end{table}
+\clearpage
+
+\subsection{What is new, and what is classical}
+\label{sec:comparison-novelty}
+
+The elementary identity
+\[
+  \ip{a}{b}=\coeff{N-1}{V_aV_b^\star}
+\]
+is classical, as are polynomial reversal, random linear fingerprints, logarithmic-derivative multiset tests, DEEP quotients, Merkle commitments, and FRI-style proximity testing.  The claim of this paper is therefore not novelty of any one of those ingredients in isolation.
+
+The framework contribution is the following composition of facts.
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item A single table-form Kronecker commitment supports public multilinear evaluation and arbitrary committed inner products through the same coefficient functional.
+  \item Inversion closure of the RS domain makes reversal of a committed table a \emph{virtual} codeword rather than another committed oracle.
+  \item The split identity
+  \[
+    XUK=A+vX^N+X^{N+1}H
+  \]
+  converts the selected coefficient into a local identity in which the high part $H$ is also virtual.
+  \item Geometric weighting and DEEP quotients lift the coefficient primitive from scalar inner products to pointwise Hadamard relations.
+  \item Logarithmic-derivative lookup and multiset equality reduce to those same IP/Hadamard primitives.
+  \item Sparse matrix multiplication, R1CS, and offline memory consistency reduce to the same instruction set.
+  \item The protected low-degree words from all these heterogeneous relations are combined before proximity testing, so one RS folding chain and one final query phase certify the batch.
+  \item The resulting IOR admits the relaxed round-by-round decoding state required for the post-quantum QROM compilation of \cref{sec:post-quantum}.
+\end{enumerate}
+The novelty question for the complete paper is therefore whether this \emph{systematic transparent composition}---rather than the middle-coefficient identity itself---has appeared previously.  The related systems above each contain nearby ingredients, but they organize the algebra/commitment boundary differently.
+
+\subsection{Claims deliberately not made}
+\label{sec:comparison-no-claims}
+
+Several conclusions do \emph{not} follow from the current theory.
+
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item We do not claim that coefficient extraction asymptotically improves the prover complexity of Sumcheck.  \Cref{prop:ip-vs-sumcheck-complexity} shows that an isolated degree-two inner product is generically cheaper arithmetically with an optimized multilinear Sumcheck prover.
+  \item We do not claim smaller proofs or faster verification than DeepFold, WHIR, pairing-based PCS constructions, or other optimized commitments.  The current unique-decoding backend can require many queries.
+  \item We do not claim field agnosticism.  The virtual-reversal construction uses the chosen smooth inversion-closed multiplicative domain.
+  \item We do not yet claim zero knowledge.  The present manuscript establishes knowledge soundness and transparent commitment consistency; witness hiding requires a separate masking layer compatible with all virtual relations.
+  \item We do not identify ordinary interactive Sumcheck as a quantum-vulnerable primitive.  The post-quantum distinction concerns the cryptographic commitment and non-interactive compilation layers, as explained in \cref{sec:post-quantum}.
+  \item We do not use published benchmark numbers from different systems as evidence that this construction is faster.  Such figures are contextual only until the controlled Rust study of \cref{sec:complexity-benchmark-plan} is complete.
+\end{enumerate}
+
+These limitations are useful because they isolate the empirical hypothesis of the project.  The mathematical result is a common coefficient-extraction/RS representation for a broad set of relations.  The implementation question is whether a fused implementation of those relations, with shared NTTs, packed commitments, one master encoding, and one folding/query phase, offers a useful performance point relative to mature Sumcheck-centered systems.
+
+\subsection{Benchmark matrix for the companion implementation}
+\label{sec:comparison-benchmark-matrix}
+
+The companion repository will maintain two classes of baselines.
+
+\paragraph{Controlled baselines.}
+These are implemented or run under the same field, hash, compiler, CPU, security target, commitment layout, and serialization format as the coefficient-extraction prover.  At minimum we require:
+\begin{align*}
+  &\text{degree-two Sumcheck}
+    &&\text{vs.}\quad \Pi_{\mathrm{IP}},\\
+  &\text{pointwise multiplication via Sumcheck/standard MLP reduction}
+    &&\text{vs.}\quad \Pi_{\mathrm{Had}},\\
+  &\text{log-derivative lookup with Sumcheck}
+    &&\text{vs.}\quad \Pi_{\mathrm{Lookup}},\\
+  &\text{sparse R1CS with the tree-based Sumcheck baseline}
+    &&\text{vs.}\quad \Pi_{\mathrm{R1CS}},\\
+  &\text{offline memory consistency baseline}
+    &&\text{vs.}\quad \Pi_{\mathrm{Mem}}.
+\end{align*}
+Every comparison reports front-end arithmetic, encoding, hashing, folding, verifier work, proof size, and peak memory separately.
+
+\paragraph{External reproducible baselines.}
+When public implementations of BaseFold, DeepFold, WHIR, TensorSwitch, Spartan/BinarySpartan, HyperPlonk, Lasso/Jolt, Celer, Twist--Shout, Brakedown, Mercury, Samaritan, or Neo/SuperNeo can be built under compatible parameters, the repository will record the exact revision and command line and run them on the same machine.  Otherwise, their paper-reported measurements will appear in a separate table explicitly labelled \emph{reported by the authors}; they will not be mixed into speedup ratios against our own measurements.
+
+\begin{remark}[Comparison criterion]
+\label{rem:comparison-criterion}
+The experiment that most directly tests the thesis of this paper is not a standalone PCS opening.  It is a heterogeneous workload in which evaluation, multiplication, lookup/permutation, and sparse constraints are all required simultaneously.  In that setting the coefficient-extraction architecture pays multiple relation-specific auxiliary constructions but amortizes the low-degree backend over the complete batch.  A fair benchmark must therefore report both sides of that tradeoff.
+\end{remark}
+
+\subsection{Summary}
+\label{sec:comparison-summary}
+
+Existing systems demonstrate several successful interfaces between multilinear algebra and cryptographic commitment: recursive Sumcheck followed by a PCS, Sumcheck interleaved with foldable-code proximity, constrained Reed--Solomon testing, field-agnostic linear-code commitments, and homomorphic pairing-based multilinear commitments.  The interface studied here is different:
+\begin{equation}
+  \boxed{
+  \begin{gathered}
+    \text{relation}
+    \longrightarrow
+    \text{coefficient/Hadamard instruction set}
+    \\
+    \longrightarrow
+    \text{one ordinary RS low-degree batch}
+    \longrightarrow
+    \text{FRI-style proximity}
+  \end{gathered}}
+  \label{eq:comparison-framework-summary}
+\end{equation}
+The next section states the limitations and open problems that determine whether this architectural simplification can become a competitive proof system in practice.

@@ -1,0 +1,394 @@
+\section{Virtual Reed--Solomon Words}
+\label{sec:virtual-oracles}
+
+The coefficient identities of \cref{sec:coefficient-calculus} introduce low-degree polynomials that need not be committed independently.  Their evaluations can often be reconstructed locally from words that are already committed and from public challenges.  This section isolates the three transformations used throughout the rest of the paper: reversal on an inversion-closed domain, reconstruction of the high polynomial in the universal split identity, and DEEP quotient words for binding out-of-domain evaluations.
+
+The word ``virtual'' is used only to describe how the verifier obtains oracle values.  A virtual word is not assumed to be low degree.  Low degree is a conclusion that must be enforced by the later batching and proximity arguments.
+
+\subsection{Virtual words and locality}
+\label{sec:virtual-locality}
+
+\begin{definition}[Virtual word]
+\label{def:virtual-word}
+Let $L$ be the base evaluation domain.  Suppose the verifier has oracle access to words
+\[
+  w_1,\ldots,w_s\in\F^L.
+\]
+A word $v\in\F^L$ is called a \emph{virtual word derived from $(w_1,\ldots,w_s)$} if, for every $\xi\in L$, the verifier can compute $v(\xi)$ from public data and from a prescribed finite set of oracle values of the $w_i$.
+
+The virtual word is \emph{$q$-local} if at most $q$ oracle positions in total are required to compute one value $v(\xi)$.  If the required positions lie in one fibre $\{\zeta,-\zeta\}$ whenever the folding verifier queries one fibre, we call the transformation \emph{fibre local}.
+\end{definition}
+
+\begin{remark}[Virtuality does not imply low degree]
+\label{rem:virtual-not-low-degree}
+\Cref{def:virtual-word} is purely operational.  An arbitrary pointwise function of low-degree codewords need not itself be a Reed--Solomon codeword.  Every later protocol therefore batches the virtual words with the committed words and applies a proximity test.  Soundness is obtained only after showing that a batch which is close to the code for sufficiently many verifier challenges forces the individual words to admit compatible low-degree explanations.
+\end{remark}
+
+\subsection{Reversal on a multiplicative domain}
+\label{sec:virtual-reversal}
+
+The first virtual transformation is the reversal of \cref{def:reversal}.  It is available without a new commitment because the smooth domain $L\le\Fq^\times$ is closed under inversion.
+
+\begin{definition}[Virtual reversal]
+\label{def:virtual-reversal}
+For a word $w\in\F^L$, define $w^{\star}\in\F^L$ by
+\begin{equation}
+  w^{\star}(\xi)
+  \defeq
+  \xi^{N-1}w(\xi^{-1}),
+  \qquad \xi\in L.
+  \label{eq:virtual-reversal}
+\end{equation}
+This is well defined because $L$ is a multiplicative group and therefore $\xi^{-1}\in L$.
+\end{definition}
+
+\begin{lemma}[Reversal commutes with evaluation]
+\label{lem:reversal-commutes-evaluation}
+Let $P\in\F[X]_{<N}$ and $w=\ev_L(P)$.  Then
+\begin{equation}
+  w^{\star}=\ev_L(P^{\star}).
+  \label{eq:reversal-commutes-evaluation}
+\end{equation}
+Consequently, the map $w\mapsto w^{\star}$ maps the base code $C_0$ bijectively onto itself.
+\end{lemma}
+
+\begin{proof}
+For every $\xi\in L$,
+\[
+  w^{\star}(\xi)
+  =\xi^{N-1}w(\xi^{-1})
+  =\xi^{N-1}P(\xi^{-1})
+  =P^{\star}(\xi)
+\]
+by \cref{def:reversal}.  This proves \eqref{eq:reversal-commutes-evaluation}.  Since reversal is an involution on $\F[X]_{<N}$ by \cref{lem:reversal-properties}, it is a bijection on the representing polynomials of $C_0$, hence $w\mapsto w^{\star}$ is a bijection of $C_0$.
+\end{proof}
+
+\begin{lemma}[Algebraic properties of virtual reversal]
+\label{lem:virtual-reversal-properties}
+The map $\mathcal R:\F^L\to\F^L$, $\mathcal R(w)=w^{\star}$, satisfies:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item $\mathcal R$ is $\F$-linear;
+  \item $\mathcal R^2=\operatorname{id}$;
+  \item for $u,v\in\F^L$ and $\xi\in L$,
+  \[
+    u^{\star}(\xi)=v^{\star}(\xi)
+    \quad\Longleftrightarrow\quad
+    u(\xi^{-1})=v(\xi^{-1});
+  \]
+  \item $\Delta(u^{\star},v^{\star})=\Delta(u,v)$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Linearity follows immediately from \eqref{eq:virtual-reversal}.  For the involution property,
+\begin{align*}
+  (w^{\star})^{\star}(\xi)
+  &=\xi^{N-1}w^{\star}(\xi^{-1})\\
+  &=\xi^{N-1}(\xi^{-1})^{N-1}w((\xi^{-1})^{-1})\\
+  &=w(\xi).
+\end{align*}
+For (3), the scalar $\xi^{N-1}$ is nonzero, so equality of the two reversed values is equivalent to equality of the two original values at $\xi^{-1}$.  Finally, inversion is a bijection of $L$, so the number of positions on which $u^{\star}$ and $v^{\star}$ differ equals the number of positions on which $u$ and $v$ differ.  Dividing by $|L|$ proves (4).
+\end{proof}
+
+The folding backend works with fibre-closed agreement sets, so we also need inversion to preserve fibres.
+
+\begin{lemma}[Inversion preserves fibres]
+\label{lem:inversion-preserves-fibres}
+For $T\subseteq L$, define
+\[
+  T^{-1}\defeq\{\xi^{-1}:\xi\in T\}.
+\]
+Then:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item $|T^{-1}|=|T|$;
+  \item $T$ is fibre-closed if and only if $T^{-1}$ is fibre-closed;
+  \item for every $u,v\in\F^L$,
+  \begin{equation}
+    \Delta_{\mathrm{fib}}(u^{\star},v^{\star})
+    =\Delta_{\mathrm{fib}}(u,v).
+    \label{eq:reversal-fibre-distance}
+  \end{equation}
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Inversion is a bijection on the finite group $L$, proving (1).  Moreover
+\[
+  (-\xi)^{-1}=-\xi^{-1},
+\]
+so inversion maps the fibre $\{\xi,-\xi\}$ bijectively to the fibre $\{\xi^{-1},-\xi^{-1}\}$.  This proves (2).  By \cref{lem:virtual-reversal-properties}(3), a fibre is bad for $(u^{\star},v^{\star})$ exactly when its inverse fibre is bad for $(u,v)$.  Inversion permutes the fibres, so the number of bad fibres is unchanged, proving \eqref{eq:reversal-fibre-distance}.
+\end{proof}
+
+\begin{corollary}[Fibre-local queries for reversal]
+\label{cor:reversal-fibre-local}
+If a folding check requires $w^{\star}(\xi)$ and $w^{\star}(-\xi)$, the verifier obtains both values by querying $w$ only on the single inverse fibre
+\[
+  \{\xi^{-1},-\xi^{-1}\}.
+\]
+Thus virtual reversal is fibre local and requires no additional oracle commitment.
+\end{corollary}
+
+\begin{proof}
+Apply \eqref{eq:virtual-reversal} at $\xi$ and $-\xi$ and use $(-\xi)^{-1}=-\xi^{-1}$.
+\end{proof}
+
+\subsection{The virtual high-part word}
+\label{sec:virtual-high-word}
+
+We now turn the pointwise reconstruction formula of \cref{cor:virtual-high-part} into a word transformation.  We formulate it first for three arbitrary words; later specializations will take the second word either from a public kernel or from the virtual reversal of another commitment.
+
+\begin{definition}[Virtual high-part word]
+\label{def:virtual-high-word}
+Let $u,k,a\in\F^L$ and let $v\in\F$.  Define
+\begin{equation}
+  \mathsf H[u,k,a;v](\xi)
+  \defeq
+  \frac{\xi\,u(\xi)k(\xi)-a(\xi)-v\xi^N}{\xi^{N+1}},
+  \qquad \xi\in L.
+  \label{eq:virtual-high-word}
+\end{equation}
+The denominator is nonzero because $L\subseteq\Fq^{\times}$.
+\end{definition}
+
+\begin{lemma}[Pointwise identity and locality]
+\label{lem:virtual-high-locality}
+For all $u,k,a\in\F^L$, $v\in\F$, and $\xi\in L$, if
+\[
+  h=\mathsf H[u,k,a;v],
+\]
+then
+\begin{equation}
+  \xi\,u(\xi)k(\xi)
+  =a(\xi)+v\xi^N+\xi^{N+1}h(\xi).
+  \label{eq:virtual-high-pointwise-identity}
+\end{equation}
+Moreover $h(\xi)$ depends only on the three values $u(\xi)$, $k(\xi)$, $a(\xi)$ and public field data.  In particular, if $k(\xi)$ is itself public or virtually computable from a bounded number of oracle reads, then so is $h(\xi)$.
+\end{lemma}
+
+\begin{proof}
+Equation \eqref{eq:virtual-high-pointwise-identity} is obtained by multiplying \eqref{eq:virtual-high-word} by the nonzero scalar $\xi^{N+1}$.  The locality statement is immediate from the same formula.
+\end{proof}
+
+\begin{lemma}[Honest low-degree realization]
+\label{lem:virtual-high-honest}
+Let $U,K,A,H\in\F[X]_{<N}$ and $v\in\F$ satisfy
+\begin{equation}
+  XUK=A+vX^N+X^{N+1}H.
+  \label{eq:virtual-section-split}
+\end{equation}
+Put
+\[
+  u=\ev_L(U),\qquad
+  k=\ev_L(K),\qquad
+  a=\ev_L(A).
+\]
+Then
+\begin{equation}
+  \mathsf H[u,k,a;v]=\ev_L(H)\in C_0.
+  \label{eq:virtual-high-honest}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Evaluate \eqref{eq:virtual-section-split} at $\xi\in L$ and solve for $H(\xi)$.  The resulting expression is exactly \eqref{eq:virtual-high-word}.  Since $H\in\F[X]_{<N}$, its evaluation word belongs to $C_0$.
+\end{proof}
+
+\begin{lemma}[Linearity for a fixed multiplier]
+\label{lem:virtual-high-linearity}
+Fix $k\in\F^L$.  For $u,u',a,a'\in\F^L$ and $v,v'\in\F$,
+\begin{equation}
+  \mathsf H[u+u',k,a+a';v+v']
+  =\mathsf H[u,k,a;v]+\mathsf H[u',k,a';v'].
+  \label{eq:virtual-high-linearity}
+\end{equation}
+More generally, for $\lambda\in\F$,
+\[
+  \mathsf H[\lambda u,k,\lambda a;\lambda v]
+  =\lambda\mathsf H[u,k,a;v].
+\]
+\end{lemma}
+
+\begin{proof}
+Both identities follow pointwise from distributivity in the numerator of \eqref{eq:virtual-high-word}.  The multiplier word $k$ is held fixed.
+\end{proof}
+
+\begin{remark}[Committed second factors]
+\label{rem:committed-second-factor}
+For an arbitrary committed inner product, the multiplier word $k$ will be the virtual reversal $w_b^{\star}$ of a second committed word.  The map $(u,k)\mapsto \mathsf H[u,k,a;v]$ is bilinear in its product term rather than jointly linear.  This causes no difficulty: the verifier computes the product locally, while the later soundness argument uses correlated agreement to obtain low-degree explanations for $u$, $k$, $a$, and $h$ separately, after which the polynomial identity of \cref{lem:universal-identity} applies.
+\end{remark}
+
+\subsection{DEEP quotient words}
+\label{sec:deep-quotients}
+
+The Hadamard, lookup, and sparse-relation protocols will need to certify values of a committed polynomial at points outside the Reed--Solomon domain.  We use the standard quotient identity
+\[
+  P(X)-P(x)=(X-x)Q(X)
+\]
+to turn such a claim into another low-degree word.
+
+\begin{definition}[DEEP quotient word]
+\label{def:deep-quotient-word}
+Let $w\in\F^L$, let $x\in\F\setminus L$, and let $y\in\F$.  Define
+\begin{equation}
+  \mathsf Q[w;y,x](\xi)
+  \defeq
+  \frac{w(\xi)-y}{\xi-x},
+  \qquad \xi\in L.
+  \label{eq:deep-quotient-word}
+\end{equation}
+The denominator is nonzero because $x\notin L$.
+\end{definition}
+
+\begin{lemma}[Honest DEEP quotient]
+\label{lem:deep-honest}
+Let $P\in\F[X]_{<N}$, let $x\in\F\setminus L$, and set
+\[
+  w=\ev_L(P),\qquad y=P(x).
+\]
+Then there exists a unique polynomial
+\[
+  R(X)=\frac{P(X)-y}{X-x}\in\F[X]_{<N-1}
+\]
+and
+\begin{equation}
+  \mathsf Q[w;y,x]=\ev_L(R)\in C_0.
+  \label{eq:deep-honest}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Since $P(x)-y=0$, the factor theorem gives a unique $R\in\F[X]$ satisfying
+\[
+  P(X)-y=(X-x)R(X).
+\]
+If $P$ is nonconstant, then $\deg R=\deg P-1\le N-2$; if $P$ is constant, then $R=0$.  Thus $R\in\F[X]_{<N-1}$.  For every $\xi\in L$,
+\[
+  R(\xi)=\frac{P(\xi)-y}{\xi-x}
+  =\frac{w(\xi)-y}{\xi-x}
+  =\mathsf Q[w;y,x](\xi),
+\]
+which proves \eqref{eq:deep-honest}.
+\end{proof}
+
+The converse is the soundness property needed later: if a word and its quotient word both agree with low-degree polynomials on sufficiently many positions, then the claimed out-of-domain value is forced.
+
+\begin{lemma}[DEEP consistency on an agreement set]
+\label{lem:deep-consistency}
+Let $x\in\F\setminus L$, $y\in\F$, and let $P,R\in\F[X]_{<N}$.  Let $w,q\in\F^L$ satisfy
+\[
+  w(\xi)=P(\xi),
+  \qquad
+  q(\xi)=R(\xi)
+  \qquad
+  \text{for every }\xi\in T,
+\]
+for a set $T\subseteq L$.  Suppose also that
+\[
+  q=\mathsf Q[w;y,x]
+\]
+pointwise on $L$.  If
+\begin{equation}
+  |T|>N,
+  \label{eq:deep-agreement-size}
+\end{equation}
+then
+\begin{equation}
+  P(x)=y
+  \label{eq:deep-value-forced}
+\end{equation}
+and
+\begin{equation}
+  P(X)-y=(X-x)R(X).
+  \label{eq:deep-polynomial-identity}
+\end{equation}
+In particular $\deg R<N-1$ unless $R=0$.
+\end{lemma}
+
+\begin{proof}
+For every $\xi\in T$, the definition of $q$ gives
+\[
+  (\xi-x)q(\xi)-w(\xi)+y=0.
+\]
+Using the agreements with $P$ and $R$ on $T$,
+\[
+  (\xi-x)R(\xi)-P(\xi)+y=0.
+\]
+Therefore the polynomial
+\[
+  S(X)\defeq (X-x)R(X)-P(X)+y
+\]
+vanishes on all points of $T$.  Since $P,R\in\F[X]_{<N}$,
+\[
+  \deg S\le N.
+\]
+The set $T$ contains more than $N$ distinct field elements by \eqref{eq:deep-agreement-size}, so root counting forces $S=0$.  Evaluating at $X=x$ gives
+\[
+  -P(x)+y=0,
+\]
+which proves \eqref{eq:deep-value-forced}; the identity $S=0$ is exactly \eqref{eq:deep-polynomial-identity}.  The final degree statement follows because the right-hand side divides the degree of the nonzero polynomial $P-y$ by one.
+\end{proof}
+
+\begin{corollary}[Uniqueness of a DEEP opening]
+\label{cor:deep-opening-unique}
+Let $P\in\F[X]_{<N}$ and $x\in\F\setminus L$.  There is at most one $y\in\F$ for which a polynomial $R\in\F[X]_{<N}$ can satisfy
+\[
+  P(X)-y=(X-x)R(X).
+\]
+That value is $y=P(x)$.
+\end{corollary}
+
+\begin{proof}
+Evaluating the displayed identity at $X=x$ gives $P(x)-y=0$.
+\end{proof}
+
+\begin{lemma}[Locality of DEEP quotients]
+\label{lem:deep-locality}
+For fixed public $(x,y)$ with $x\notin L$, the value $\mathsf Q[w;y,x](\xi)$ requires exactly one oracle value $w(\xi)$ and $O(1)$ field operations.  If a folding check queries the fibre $\{\xi,-\xi\}$, the two quotient values require only the two values $w(\xi)$ and $w(-\xi)$ from that same fibre.
+\end{lemma}
+
+\begin{proof}
+This is immediate from \eqref{eq:deep-quotient-word}.
+\end{proof}
+
+\begin{remark}[Sampling points outside the domain]
+\label{rem:deep-poles}
+We formulate DEEP quotients with $x\in\F\setminus L$ so that completeness is exact and no pole convention is needed.  Later protocols may enforce this by sampling from a prescribed subset of the challenge field disjoint from $L$; alternatively, one may sample from all of $\F$ and account explicitly for the event $x\in L$ in the completeness and soundness bounds.  The algebraic statements of this section require only $x\notin L$.
+\end{remark}
+
+\subsection{Composition of virtual transformations}
+\label{sec:virtual-composition}
+
+The protocols below combine the preceding transformations.  The most important example is the committed inner product: if $w_a=\ev_L(V_a)$ and $w_b=\ev_L(V_b)$, then the verifier first forms $w_b^{\star}$ virtually and then uses it as the multiplier word in \cref{def:virtual-high-word}.  In the honest case, \cref{lem:reversal-commutes-evaluation,lem:virtual-high-honest} give
+\[
+  w_b^{\star}=\ev_L(V_b^{\star})
+\]
+and, for the unique $A,H\in\F[X]_{<N}$ satisfying
+\[
+  XV_aV_b^{\star}=A+SX^N+X^{N+1}H,
+\]
+\[
+  \mathsf H[w_a,w_b^{\star},\ev_L(A);S]=\ev_L(H).
+\]
+Thus the verifier can query all four low-degree objects
+\[
+  V_a,\qquad V_b^{\star},\qquad A,\qquad H
+\]
+while only $V_a$, $V_b$, and $A$ require actual commitments.
+
+Similarly, an out-of-domain value $P(x)=y$ can be tied to the commitment of $P$ by placing the virtual quotient $\mathsf Q[w;y,x]$ in the same random batch as the original word.  The local verifier sees only ordinary oracle values and field operations; global consistency is delegated to the Reed--Solomon proximity argument.
+
+\begin{proposition}[Closure of honest constructions]
+\label{prop:honest-virtual-closure}
+Every virtual transformation introduced in this section maps the corresponding honest polynomial relation to a word in $C_0$:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item if $w=\ev_L(P)$ with $P\in\F[X]_{<N}$, then $w^{\star}=\ev_L(P^{\star})\in C_0$;
+  \item if $u,k,a$ are evaluations of $U,K,A\in\F[X]_{<N}$ satisfying the universal split identity with $H\in\F[X]_{<N}$, then $\mathsf H[u,k,a;v]=\ev_L(H)\in C_0$;
+  \item if $w=\ev_L(P)$ and $y=P(x)$ for $x\notin L$, then $\mathsf Q[w;y,x]=\ev_L((P-y)/(X-x))\in C_0$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+The three statements are exactly \cref{lem:reversal-commutes-evaluation,lem:virtual-high-honest,lem:deep-honest}.
+\end{proof}
+
+The next section turns this closure property into a generic coefficient-extraction protocol.  The prover commits only to those auxiliary polynomials whose values cannot be reconstructed locally; all remaining low-degree objects are virtual.  A random linear combination then reduces simultaneous low-degree enforcement to one Reed--Solomon proximity test.

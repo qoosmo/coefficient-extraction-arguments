@@ -1,0 +1,329 @@
+\section{Committed Inner Products}
+\label{sec:inner-product}
+
+The public linear functionals of \cref{sec:linear-functionals} use a public second factor.  We now pass to the first genuinely bilinear relation: both vectors are committed.  Let
+\[
+  a,b:\B^n\to\F
+\]
+be tables and let
+\[
+  S=\sum_{w\in\B^n}a(w)b(w)
+\]
+be their inner product.  By \cref{thm:middle-coefficient-inner-product},
+\begin{equation}
+  S=[X^{N-1}]V_a(X)V_b^{\star}(X).
+  \label{eq:ip-middle-coefficient}
+\end{equation}
+The second factor is not public, but \cref{sec:virtual-reversal} shows that its Reed--Solomon word is already available virtually from the commitment to $b$:
+\begin{equation}
+  \ev_L(V_b^{\star})(\xi)
+  =\xi^{N-1}\ev_L(V_b)(\xi^{-1}).
+  \label{eq:ip-reversal-value}
+\end{equation}
+Thus the arbitrary committed inner product is an instance of the generic coefficient-extraction protocol with no additional commitment for the reversed second factor.
+
+This section states the relation, gives the protocol explicitly, and derives its completeness and soundness from the general machinery of \cref{sec:generic-protocol}.  We also record the decoding consequence needed later when inner products are used as subrelations in lookup, sparse-matrix, and R1CS arguments.
+
+\subsection{The inner-product relation}
+\label{sec:ip-relation}
+
+\begin{definition}[Hypercube inner product]
+\label{def:hypercube-inner-product}
+For tables $a,b:\B^n\to\F$, define
+\begin{equation}
+  \langle a,b\rangle_{\B^n}
+  \defeq
+  \sum_{w\in\B^n}a(w)b(w).
+  \label{eq:hypercube-inner-product}
+\end{equation}
+When no confusion is possible we write simply $\langle a,b\rangle$.
+\end{definition}
+
+\begin{definition}[Committed-inner-product relation]
+\label{def:ip-relation}
+Fix $0<\delta\le(1-\rho)/2$.  The relation $\mathcal R^{\delta}_{\mathrm{IP}}$ consists of pairs
+\[
+  ((w_a,w_b;S),(a,b))
+\]
+with $w_a,w_b\in\F^L$, $S\in\F$, and tables $a,b:\B^n\to\F$ such that
+\begin{align}
+  \Delta_{\mathrm{fib}}(w_a,\Enc_T(a))&\le\delta,
+  \label{eq:ip-relation-distance-a}\\
+  \Delta_{\mathrm{fib}}(w_b,\Enc_T(b))&\le\delta,
+  \label{eq:ip-relation-distance-b}\\
+  S&=\langle a,b\rangle_{\B^n}.
+  \label{eq:ip-relation-value}
+\end{align}
+The instance is $(w_a,w_b;S)$ and the witness is the pair $(a,b)$.
+\end{definition}
+
+The relation is meaningful because, in the unique-decoding radius, each source word determines at most one nearby table by \cref{prop:unique-table-near-word}.  In particular, once $w_a$ and $w_b$ are fixed, the value in \eqref{eq:ip-relation-value} is determined whenever both decodings exist.
+
+\begin{lemma}[Inner products are generic coefficient claims]
+\label{lem:ip-as-generic-ce}
+Let $w_a,w_b\in\F^L$ and define the virtual reversal
+\[
+  w_b^{\star}(\xi)=\xi^{N-1}w_b(\xi^{-1}).
+\]
+Then $(w_a,w_b;S)$ has a witness in $\mathcal R^{\delta}_{\mathrm{IP}}$ if and only if $(w_a,w_b^{\star};S)$ has a witness in the generic coefficient-extraction relation $\mathcal R^{\delta}_{\mathrm{CE}}$ of \cref{def:generic-ce-relation}.
+\end{lemma}
+
+\begin{proof}
+Suppose first that $(a,b)$ witnesses $\mathcal R^{\delta}_{\mathrm{IP}}$.  Put
+\[
+  U=V_a,
+  \qquad
+  K=V_b^{\star}.
+\]
+By \cref{lem:reversal-commutes-evaluation},
+\[
+  \ev_L(K)=\Enc_T(b)^{\star}.
+\]
+By the fibre-distance isometry \eqref{eq:reversal-fibre-distance},
+\[
+  \Delta_{\mathrm{fib}}(w_b^{\star},\ev_L(K))
+  =\Delta_{\mathrm{fib}}(w_b,\Enc_T(b))
+  \le\delta.
+\]
+The first distance condition is
+\[
+  \Delta_{\mathrm{fib}}(w_a,\ev_L(U))
+  =\Delta_{\mathrm{fib}}(w_a,\Enc_T(a))
+  \le\delta.
+\]
+Finally, \cref{thm:middle-coefficient-inner-product} gives
+\[
+  [X^{N-1}]UK
+  =[X^{N-1}]V_aV_b^{\star}
+  =\langle a,b\rangle_{\B^n}
+  =S.
+\]
+Hence $(U,K)$ witnesses $\mathcal R^{\delta}_{\mathrm{CE}}$.
+
+Conversely, suppose $(U,K)$ witnesses $\mathcal R^{\delta}_{\mathrm{CE}}$ for $(w_a,w_b^{\star};S)$.  By \cref{prop:table-isomorphism}, there is a unique table $a$ with $V_a=U$, and a unique table $b$ with
+\[
+  V_b=K^{\star};
+\]
+equivalently $V_b^{\star}=K$, since reversal is an involution by \cref{lem:reversal-properties}.  The first generic distance condition is exactly \eqref{eq:ip-relation-distance-a}.  For the second, use \cref{lem:reversal-commutes-evaluation} and \eqref{eq:reversal-fibre-distance}:
+\[
+  \Delta_{\mathrm{fib}}(w_b,\Enc_T(b))
+  =\Delta_{\mathrm{fib}}(w_b^{\star},\ev_L(V_b^{\star}))
+  =\Delta_{\mathrm{fib}}(w_b^{\star},\ev_L(K))
+  \le\delta.
+\]
+The generic coefficient condition and \cref{thm:middle-coefficient-inner-product} give
+\[
+  S=[X^{N-1}]UK
+   =[X^{N-1}]V_aV_b^{\star}
+   =\langle a,b\rangle_{\B^n}.
+\]
+Thus $(a,b)$ witnesses $\mathcal R^{\delta}_{\mathrm{IP}}$.
+\end{proof}
+
+\subsection{The protocol}
+\label{sec:ip-protocol}
+
+For honest tables $a,b$, \cref{thm:universal-split} applied to $V_a$ and $V_b^{\star}$ gives unique $A,H\in\F[X]_{<N}$ satisfying
+\begin{equation}
+  XV_a(X)V_b^{\star}(X)
+  =A(X)+SX^N+X^{N+1}H(X).
+  \label{eq:ip-opening-identity}
+\end{equation}
+Only $A$ is sent.  The reversed second factor and $H$ are both virtual.
+
+\begin{definition}[Inner-product protocol $\Pi_{\mathrm{IP}}$]
+\label{def:ip-protocol}
+The instance is $(w_a,w_b;S)$.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The prover sends an oracle word $w_A\in\F^L$.  The verifier samples $\beta\in\F$.
+  \item The verifier defines the virtual reversed word
+  \begin{equation}
+    w_b^{\star}(\xi)
+    =\xi^{N-1}w_b(\xi^{-1})
+    \qquad(\xi\in L),
+    \label{eq:ip-virtual-reversal}
+  \end{equation}
+  and the virtual high-part word
+  \begin{equation}
+    h(\xi)
+    =\frac{\xi w_a(\xi)w_b^{\star}(\xi)-w_A(\xi)-S\xi^N}{\xi^{N+1}}.
+    \label{eq:ip-virtual-high}
+  \end{equation}
+  It forms
+  \begin{equation}
+    w_0^{(\beta)}
+    =w_a+\beta w_b^{\star}+\beta^2w_A+\beta^3h.
+    \label{eq:ip-batch}
+  \end{equation}
+  \item The parties run $\Pi_{\mathrm{FT}}[\ell,\kappa]$, or any sparse-level variant of \cref{def:committed-folding-levels}, on $w_0^{(\beta)}$.
+\end{enumerate}
+The verifier never receives either $w_b^{\star}$ or $h$ as a committed oracle.  At a query point $\xi$ it obtains $w_b^{\star}(\xi)$ by reading $w_b(\xi^{-1})$, and then computes $h(\xi)$ from \eqref{eq:ip-virtual-high}.
+\end{definition}
+
+\begin{remark}[Fibre-local query pattern]
+\label{rem:ip-fibre-locality}
+A folding query needs the batch at $\xi$ and $-\xi$.  The source values of $w_a$ and $w_A$ are read on the fibre $\{\xi,-\xi\}$, while the reversed source values are obtained from $w_b$ on the inverse fibre
+\[
+  \{\xi^{-1},-\xi^{-1}\}.
+\]
+By \cref{lem:inversion-preserves-fibres}, this is again one fibre of $L$.  Thus reversal changes the location of the second commitment query but does not destroy the fibre-local structure required by the folding backend.
+\end{remark}
+
+\begin{theorem}[Completeness of the inner-product protocol]
+\label{thm:ip-completeness}
+If
+\[
+  w_a=\Enc_T(a),
+  \qquad
+  w_b=\Enc_T(b),
+  \qquad
+  S=\langle a,b\rangle_{\B^n},
+\]
+then the honest prover is accepted by $\Pi_{\mathrm{IP}}$ with probability $1$.
+\end{theorem}
+
+\begin{proof}
+By \eqref{eq:ip-middle-coefficient},
+\[
+  S=[X^{N-1}]V_aV_b^{\star}.
+\]
+Hence \cref{thm:universal-split} gives unique $A,H\in\F[X]_{<N}$ satisfying \eqref{eq:ip-opening-identity}, and the prover sends $w_A=\ev_L(A)$.  By \cref{lem:reversal-commutes-evaluation}, the virtual word \eqref{eq:ip-virtual-reversal} equals $\ev_L(V_b^{\star})$.  Evaluating \eqref{eq:ip-opening-identity} at $\xi\in L$ gives
+\[
+  H(\xi)
+  =\frac{\xi V_a(\xi)V_b^{\star}(\xi)-A(\xi)-S\xi^N}{\xi^{N+1}},
+\]
+so \eqref{eq:ip-virtual-high} equals $\ev_L(H)$.  Therefore, for every $\beta\in\F$,
+\[
+  w_0^{(\beta)}
+  =\ev_L\!\left(V_a+\beta V_b^{\star}+\beta^2A+\beta^3H\right)
+  \in C_0.
+\]
+Completeness follows from \cref{prop:folding-completeness}.
+\end{proof}
+
+\subsection{Soundness}
+\label{sec:ip-soundness}
+
+The protocol is exactly the generic coefficient-extraction protocol applied to the pair $(w_a,w_b^{\star})$.  The only point that must be transported back to the original instance is the decoding of the second commitment; the reversal isometry of \cref{lem:inversion-preserves-fibres} does precisely this.
+
+\begin{theorem}[Soundness of committed inner products]
+\label{thm:ip-soundness}
+Assume
+\begin{equation}
+  2N<(1-\delta)M.
+  \label{eq:ip-degree-margin}
+\end{equation}
+If $(w_a,w_b;S)$ has no witness in $\mathcal R^{\delta}_{\mathrm{IP}}$, then every prover is accepted by $\Pi_{\mathrm{IP}}$ with probability at most
+\begin{equation}
+  \varepsilon_{\mathrm{IP}}
+  \defeq
+  \frac{3M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:ip-soundness-bound}
+\end{equation}
+The same bound holds for every sparse-level folding variant covered by \cref{prop:virtual-levels}.
+\end{theorem}
+
+\begin{proof}
+Suppose the original instance has no witness in $\mathcal R^{\delta}_{\mathrm{IP}}$.  By \cref{lem:ip-as-generic-ce}, the transformed instance
+\[
+  (w_a,w_b^{\star};S)
+\]
+has no witness in $\mathcal R^{\delta}_{\mathrm{CE}}$.  The protocol of \cref{def:ip-protocol} is exactly $\Pi_{\mathrm{CE}}$ of \cref{def:generic-ce-protocol} on this transformed instance: the second source word is evaluated virtually using \eqref{eq:ip-virtual-reversal}, while the generic high-part word is exactly \eqref{eq:ip-virtual-high}.  Therefore \cref{thm:generic-ce-soundness} gives \eqref{eq:ip-soundness-bound}.  The sparse-level statement follows from the same theorem.
+\end{proof}
+
+\begin{remark}[Why the field term is $3M/|\F|$]
+\label{rem:ip-three-M}
+Unlike a public linear functional, the second factor is itself committed and must be protected by correlated agreement.  The batch \eqref{eq:ip-batch} contains four degree-$<N$ words,
+\[
+  w_a,\quad w_b^{\star},\quad w_A,\quad h,
+\]
+and is a degree-$3$ curve in $\beta$.  Thus the correlated-agreement step uses $t=3$, which is the origin of the term $3M/|\F|$.  The reversal is virtual, but cryptographically it remains an independently decoded source word.
+\end{remark}
+
+\subsection{Decoding, uniqueness, and binding consequences}
+\label{sec:ip-decoding}
+
+The soundness theorem is stated as a relation statement.  For later composition it is useful to record explicitly what a witness means when the two commitment words are individually decodable.
+
+\begin{proposition}[Decoded value is unique]
+\label{prop:ip-decoded-value-unique}
+Assume $0<\delta\le(1-\rho)/2$.  Let $w_a,w_b\in\F^L$.  There is at most one pair of tables $(a,b)$ satisfying
+\[
+  \Delta_{\mathrm{fib}}(w_a,\Enc_T(a))\le\delta,
+  \qquad
+  \Delta_{\mathrm{fib}}(w_b,\Enc_T(b))\le\delta.
+\]
+Consequently, there is at most one $S\in\F$ for which $(w_a,w_b;S)$ has a witness in $\mathcal R^{\delta}_{\mathrm{IP}}$.
+\end{proposition}
+
+\begin{proof}
+Uniqueness of $a$ and $b$ follows independently from \cref{prop:unique-table-near-word}.  Once $a$ and $b$ are fixed, \eqref{eq:ip-relation-value} forces
+\[
+  S=\langle a,b\rangle_{\B^n},
+\]
+so $S$ is unique.
+\end{proof}
+
+\begin{corollary}[Evaluation binding for an inner-product value]
+\label{cor:ip-binding}
+Under the assumptions of \cref{thm:ip-soundness}, fix $w_a,w_b$ and two distinct values $S\ne S'$.  It is impossible that both instances $(w_a,w_b;S)$ and $(w_a,w_b;S')$ have witnesses in $\mathcal R^{\delta}_{\mathrm{IP}}$.  Moreover, if one of the two instances is false, every prover for that instance is accepted with probability at most $\varepsilon_{\mathrm{IP}}$.
+\end{corollary}
+
+\begin{proof}
+The first statement is \cref{prop:ip-decoded-value-unique}.  The second is \cref{thm:ip-soundness}.
+\end{proof}
+
+\begin{proposition}[Polynomial-time witness extraction from decoded source words]
+\label{prop:ip-decoding-extractor}
+Assume $0<\delta\le(1-\rho)/2$.  Suppose a polynomial-time Reed--Solomon unique decoder is available for radius $\delta$.  Given $w_a,w_b$, one can in time polynomial in $M$ either reject because one source word has no codeword within distance $\delta$, or recover the unique tables $a,b$ satisfying the two distance conditions of $\mathcal R^{\delta}_{\mathrm{IP}}$.  The claimed value is then checked by computing $\langle a,b\rangle_{\B^n}$.
+\end{proposition}
+
+\begin{proof}
+Apply the Reed--Solomon decoder separately to $w_a$ and $w_b$.  If it returns codewords $c_a,c_b\in C_0$, recover their unique degree-$<N$ polynomials using the inverse evaluation map of \cref{prop:rs-parameters}.  By \cref{prop:table-isomorphism}, their coefficients define unique tables $a,b$.  Check the two fibre distances explicitly and then compute the sum in \eqref{eq:hypercube-inner-product}.  All operations require time polynomial in $M$.
+\end{proof}
+
+The proposition is the algebraic extractor used later.  The round-by-round knowledge state needed for non-interactive compilation will be developed globally in the later soundness section; no additional algebraic extraction argument is required for inner products.
+
+\subsection{Costs and relation to degree-two Sumcheck}
+\label{sec:ip-costs}
+
+The identity \eqref{eq:ip-middle-coefficient} replaces the standard degree-two Boolean-hypercube sum
+\begin{equation}
+  S=\sum_{w\in\B^n}a(w)b(w)
+  \label{eq:ip-degree-two-sum}
+\end{equation}
+by one coefficient-extraction relation.  A conventional Sumcheck proof of \eqref{eq:ip-degree-two-sum} recursively eliminates the $n$ Boolean variables and terminates in evaluations of the multilinear extensions of $a$ and $b$ at one random point.  Here there are no Sumcheck round polynomials.  Instead, the prover computes the product $V_aV_b^{\star}$, splits it around degree $N$, commits to the low part $A$, and proves one Reed--Solomon proximity statement.
+
+\begin{proposition}[Local verifier work]
+\label{prop:ip-local-verifier-work}
+Apart from the folding backend, one queried fibre for $\Pi_{\mathrm{IP}}$ requires:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item the values of $w_a$ and $w_A$ on one fibre of $L$;
+  \item the values of $w_b$ on the corresponding inverse fibre;
+  \item $O(1)$ field operations per queried point to compute the reversal \eqref{eq:ip-virtual-reversal}, the high-part value \eqref{eq:ip-virtual-high}, and the batch \eqref{eq:ip-batch}.
+\end{enumerate}
+In particular, unlike multilinear evaluation in \cref{sec:table-mle-opening}, no $O(n)$ product-form kernel evaluation is needed.
+\end{proposition}
+
+\begin{proof}
+Items (i) and (ii) follow from \cref{rem:ip-fibre-locality}.  Given the source values, \eqref{eq:ip-virtual-reversal} uses one multiplication by the known scalar $\xi^{N-1}$, and \eqref{eq:ip-virtual-high} and \eqref{eq:ip-batch} use a constant number of field operations.  Powers of the queried point are determined by the domain point and may be precomputed or updated along the folding query path.  No evaluation of a length-$n$ structured kernel appears.
+\end{proof}
+
+\begin{remark}[Prover arithmetic]
+\label{rem:ip-prover-arithmetic}
+The additional first-round algebra beyond the table commitments is the product $V_aV_b^{\star}$ and the evaluation/commitment of its low part $A$.  With FFT/NTT multiplication, the product is quasi-linear in $N$ over a suitable smooth domain.  Exact implementation costs are deliberately postponed to the benchmark section: the mathematical comparison with Sumcheck depends on whether product computation, low-part encoding, Merkle commitments, and the common folding backend are fused or shared with surrounding relations.
+\end{remark}
+
+\begin{remark}[Why this primitive matters later]
+\label{rem:ip-later-applications}
+The inner-product protocol is the committed analogue of the public-linear-functional protocol.  Later sections use it as a component rather than as an isolated end goal.  In particular:
+\begin{itemize}[leftmargin=*]
+  \item degree-two Sumcheck relations of the form $\sum_w a(w)b(w)$ are immediate instances;
+  \item logarithmic-derivative lookup and multiset arguments reduce their global consistency equation to inner products;
+  \item sparse matrix--vector products reduce, after random row compression, to an inner product between a compressed matrix row and the committed vector;
+  \item bounded-degree pointwise arithmetic expressions are reduced to Hadamard relations followed by a final inner product or public linear functional.
+\end{itemize}
+Thus \cref{sec:inner-product} is the first step from coefficient extraction as an opening technique to coefficient extraction as a general proof-system primitive.
+\end{remark}

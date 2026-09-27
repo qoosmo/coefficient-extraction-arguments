@@ -1,0 +1,330 @@
+\section{Multilinear Evaluation and Public Linear Functionals}
+\label{sec:linear-functionals}
+
+The generic protocol of \cref{sec:generic-protocol} turns a coefficient claim
+\(
+  v=[X^{N-1}]UK
+\)
+into one Reed--Solomon proximity test.  In this section the second factor is public.  This gives the first family of applications of the framework: arbitrary public linear functionals of a committed table, multilinear evaluation, and summation over the Boolean hypercube.  No new proximity argument is required; the only work is to identify the public kernel and to account for its evaluation cost.
+
+The point of treating these claims first is structural.  Many proof-system verifiers repeatedly ask for linear functionals of the same committed witness table.  In the multilinear language these appear as evaluations of a multilinear extension, Boolean-hypercube sums, or random linear combinations.  In the present framework all of them are instances of one coefficient functional with a public reversed generating polynomial.
+
+\subsection{The public-linear-functional relation}
+\label{sec:public-linear-functional-relation}
+
+Let \(p:\B^n\to\F\) be a public table.  Write
+\[
+  K_p(X)
+  =\sum_{j=0}^{N-1}p(j)X^{N-1-j}
+\]
+for its reversed generating polynomial, as in \cref{def:public-kernel}.  For a committed table \(t\), the desired value is
+\[
+  \Lambda_p(t)
+  \defeq
+  \sum_{w\in\B^n} t(w)p(w).
+\]
+By \cref{cor:public-linear-functional},
+\begin{equation}
+  \Lambda_p(t)
+  = [X^{N-1}]V_t(X)K_p(X).
+  \label{eq:linear-functional-coefficient}
+\end{equation}
+
+\begin{definition}[Public-linear-functional relation]
+\label{def:public-linear-functional-relation}
+Fix a public table \(p:\B^n\to\F\) with \(\deg K_p<N\).  The relation \(\mathcal R^{\delta}_{\mathrm{Lin}}[p]\) consists of pairs
+\[
+  ((w;v),t)
+\]
+such that
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item \(w\in\F^L\) and \(t:\B^n\to\F\);
+  \item \(\Delta_{\mathrm{fib}}(w,\Enc_T(t))\le\delta\);
+  \item \(v=\Lambda_p(t)\).
+\end{enumerate}
+The instance is \((w;v)\), the witness is \(t\), and the weight table \(p\) is public.
+\end{definition}
+
+\begin{definition}[Public-linear-functional protocol]
+\label{def:public-linear-functional-protocol}
+The protocol \(\Pi_{\mathrm{Lin}}[p]\) is the public-kernel specialization of \(\Pi_{\mathrm{CE}}\) from \cref{cor:public-kernel-specialization}, with
+\[
+  U=V_t,
+  \qquad
+  K=K_p.
+\]
+Thus the honest prover chooses \(A,H\in\F[X]_{<N}\) satisfying
+\begin{equation}
+  XV_tK_p=A+vX^N+X^{N+1}H,
+  \label{eq:linear-functional-opening-identity}
+\end{equation}
+sends \(w_A=\ev_L(A)\), and after the verifier samples \(\beta\in\F\) the verifier defines the virtual word
+\begin{equation}
+  h(\xi)
+  =\frac{\xi w(\xi)K_p(\xi)-w_A(\xi)-v\xi^N}{\xi^{N+1}}
+  \qquad(\xi\in L).
+  \label{eq:linear-functional-virtual-h}
+\end{equation}
+It then runs the folding test on
+\begin{equation}
+  w_0^{(\beta)}=w+\beta w_A+\beta^2h.
+  \label{eq:linear-functional-batch}
+\end{equation}
+\end{definition}
+
+\begin{theorem}[Completeness and soundness for public linear functionals]
+\label{thm:public-linear-functional-protocol}
+Assume
+\begin{equation}
+  2N<(1-\delta)M.
+  \label{eq:linear-functional-degree-margin}
+\end{equation}
+Then \(\Pi_{\mathrm{Lin}}[p]\) is complete for \(\mathcal R^{\delta}_{\mathrm{Lin}}[p]\).  If an instance \((w;v)\) has no witness in \(\mathcal R^{\delta}_{\mathrm{Lin}}[p]\), every prover is accepted with probability at most
+\begin{equation}
+  \varepsilon_{\mathrm{Lin}}
+  \defeq
+  \frac{2M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:linear-functional-soundness}
+\end{equation}
+The same statement holds with sparse committed folding levels.
+\end{theorem}
+
+\begin{proof}
+For an honest witness \(t\), \eqref{eq:linear-functional-coefficient} gives
+\(
+  v=[X^{N-1}]V_tK_p
+\).
+Hence \cref{thm:universal-split} gives unique polynomials \(A,H\in\F[X]_{<N}\) satisfying \eqref{eq:linear-functional-opening-identity}.  Evaluating that identity on \(L\) shows that the virtual word in \eqref{eq:linear-functional-virtual-h} is exactly \(\ev_L(H)\).  Therefore \eqref{eq:linear-functional-batch} is the evaluation of
+\[
+  V_t+\beta A+\beta^2H\in\F[X]_{<N},
+\]
+and completeness follows from completeness of the folding test.
+
+For soundness, this is precisely \cref{cor:public-kernel-specialization}, with the public polynomial \(K=K_p\).  The degree hypothesis in that corollary is \eqref{eq:linear-functional-degree-margin}.  The stated error bound is therefore \eqref{eq:public-kernel-soundness}, and the sparse-level statement follows from the corresponding part of \cref{cor:public-kernel-specialization}.
+\end{proof}
+
+\begin{remark}[Where the verifier cost sits]
+\label{rem:linear-functional-verifier-cost}
+The folding verifier performs exactly the same authentication and folding checks for every public linear functional.  The only application-specific local work is evaluation of \(K_p(\xi)\) at the queried points.  Consequently, a family of weights is useful when the corresponding reversed generating polynomials form a succinct kernel family in the sense of \cref{def:succinct-kernel-family}.
+\end{remark}
+
+\subsection{Multilinear evaluation from a table commitment}
+\label{sec:table-mle-opening}
+
+Let \(f\in\M\), and let \(t=f|_{\B^n}\) be its table form.  Recall that the table commitment is
+\[
+  \Enc_T(t)=\ev_L(V_t),
+\]
+and that its multilinear extension is
+\[
+  \widetilde t(z)
+  =\sum_{w\in\B^n}t(w)\eq(w,z).
+\]
+Since a multilinear polynomial is uniquely determined by its Boolean table, \(\widetilde t=f\).  The public weight table for evaluation at \(z\in\F^n\) is therefore
+\[
+  p_z(w)=\eq(w,z).
+\]
+Its public kernel is the product-form polynomial
+\begin{equation}
+  E_z^{\star}(X)
+  =\prod_{i=1}^{n}
+      \left(z_i+(1-z_i)X^{2^{i-1}}\right),
+  \label{eq:section7-evaluation-kernel}
+\end{equation}
+and \cref{thm:table-evaluation-extraction} gives
+\begin{equation}
+  f(z)=\widetilde t(z)
+  =[X^{N-1}]V_t(X)E_z^{\star}(X).
+  \label{eq:section7-mle-coefficient}
+\end{equation}
+
+\begin{definition}[Evaluation relation]
+\label{def:table-evaluation-relation}
+The relation \(\mathcal R^{\delta}_{\mathrm{Eval}}\) consists of pairs
+\[
+  ((w;z,v),t)
+\]
+with \(w\in\F^L\), \(z\in\F^n\), \(v\in\F\), and \(t:\B^n\to\F\), such that
+\[
+  \Delta_{\mathrm{fib}}(w,\Enc_T(t))\le\delta
+  \qquad\text{and}\qquad
+  \widetilde t(z)=v.
+\]
+\end{definition}
+
+\begin{definition}[Table-form evaluation protocol]
+\label{def:table-evaluation-protocol}
+The protocol \(\Pi_{\mathrm{Eval}}\) is \(\Pi_{\mathrm{Lin}}[p_z]\) with the kernel \(E_z^{\star}\) from \eqref{eq:section7-evaluation-kernel}.  Equivalently, the honest prover sends \(w_A=\ev_L(A)\) for
+\begin{equation}
+  XV_tE_z^{\star}=A+vX^N+X^{N+1}H,
+  \label{eq:section7-evaluation-opening-identity}
+\end{equation}
+the verifier computes
+\begin{equation}
+  h(\xi)
+  =\frac{\xi w(\xi)E_z^{\star}(\xi)-w_A(\xi)-v\xi^N}{\xi^{N+1}},
+  \label{eq:section7-evaluation-virtual}
+\end{equation}
+and it folds the batch \(w+\beta w_A+\beta^2h\).
+\end{definition}
+
+\begin{corollary}[Sound table-form multilinear evaluation]
+\label{cor:table-evaluation-soundness}
+Under \eqref{eq:linear-functional-degree-margin}, \(\Pi_{\mathrm{Eval}}\) is complete for \(\mathcal R^{\delta}_{\mathrm{Eval}}\), and a false instance is accepted with probability at most
+\begin{equation}
+  \frac{2M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:table-evaluation-soundness}
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+By \eqref{eq:section7-mle-coefficient}, evaluation at \(z\) is the public linear functional with weights \(p_z(w)=\eq(w,z)\).  Apply \cref{thm:public-linear-functional-protocol} with \(K_{p_z}=E_z^{\star}\).
+\end{proof}
+
+\begin{proposition}[Local verifier cost for multilinear evaluation]
+\label{prop:table-evaluation-verifier-cost}
+At one queried \(\xi\in L\), after \(\xi^{-1}\) and \(\xi^N\) are available, the application-specific work of \(\Pi_{\mathrm{Eval}}\), excluding the folding and authentication checks, consists of computing \(E_z^{\star}(\xi)\) and then \eqref{eq:section7-evaluation-virtual}.  In particular it uses \(O(n)\) field operations.  More explicitly, \(E_z^{\star}(\xi)\) can be evaluated with the operation count of \cref{prop:table-kernel-cost}.
+\end{proposition}
+
+\begin{proof}
+This follows directly from the product formula \eqref{eq:section7-evaluation-kernel}, \cref{prop:table-kernel-cost}, and the single rational expression \eqref{eq:section7-evaluation-virtual}.  The denominator is nonzero because \(L\subseteq\F_q^\times\).
+\end{proof}
+
+\begin{remark}[No recursive variable elimination]
+\label{rem:evaluation-no-sumcheck}
+The protocol proves the final multilinear evaluation directly from the committed table.  It does not recursively eliminate the variables \(x_1,\ldots,x_n\) as Sumcheck does.  The exponential vector of Boolean equality weights is represented instead by the succinct product kernel \(E_z^{\star}\), while low degree of the committed and auxiliary words is enforced by the Reed--Solomon proximity test.  This is the first concrete instance of the transformation studied throughout the paper:
+\[
+  \text{multilinear relation}
+  \longrightarrow
+  \text{coefficient identity}
+  \longrightarrow
+  \text{Reed--Solomon proximity}.
+\]
+\end{remark}
+
+\subsection{Hypercube sums}
+\label{sec:hypercube-sum-protocol}
+
+The sum of a committed table is the public linear functional with the all-ones weight vector.  Its kernel
+\begin{equation}
+  K_{\mathbf1}(X)
+  =\sum_{j=0}^{N-1}X^j
+  =\prod_{i=1}^{n}(1+X^{2^{i-1}})
+  \label{eq:section7-sum-kernel}
+\end{equation}
+has the same binary product structure as the evaluation kernels.
+
+\begin{definition}[Hypercube-sum relation]
+\label{def:hypercube-sum-relation}
+The relation \(\mathcal R^{\delta}_{\mathrm{Sum}}\) consists of pairs
+\[
+  ((w;s),t)
+\]
+such that
+\[
+  \Delta_{\mathrm{fib}}(w,\Enc_T(t))\le\delta
+  \qquad\text{and}\qquad
+  s=\sum_{u\in\B^n}t(u).
+\]
+\end{definition}
+
+\begin{corollary}[Sumcheck-free hypercube sum]
+\label{cor:hypercube-sum-protocol}
+Let \(\Pi_{\mathrm{Sum}}\) be the public-linear-functional protocol with kernel \(K_{\mathbf1}\) from \eqref{eq:section7-sum-kernel}.  Under \eqref{eq:linear-functional-degree-margin}, the protocol is complete for \(\mathcal R^{\delta}_{\mathrm{Sum}}\) and has soundness error at most
+\begin{equation}
+  \frac{2M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:hypercube-sum-protocol-soundness}
+\end{equation}
+At each queried point, the kernel value can be computed in \(O(n)\) field operations by the product in \eqref{eq:section7-sum-kernel}.
+\end{corollary}
+
+\begin{proof}
+The coefficient identity is \cref{cor:hypercube-sum-extraction}.  Apply \cref{thm:public-linear-functional-protocol}.  The local complexity follows by repeated squaring to obtain \(\xi^{2^{i-1}}\), followed by multiplication of the \(n\) factors \(1+\xi^{2^{i-1}}\).
+\end{proof}
+
+\begin{remark}[Relation with evaluation at the barycentre]
+\label{rem:sum-as-evaluation}
+If the characteristic is odd, then
+\[
+  \eq\!\left(w,\left(\tfrac12,\ldots,\tfrac12\right)\right)=2^{-n}
+\]
+for every \(w\in\B^n\).  Hence
+\[
+  \sum_{w\in\B^n}t(w)
+  =2^n\widetilde t\!\left(\tfrac12,\ldots,\tfrac12\right).
+\]
+Thus \(\Pi_{\mathrm{Sum}}\) could also be obtained from \(\Pi_{\mathrm{Eval}}\).  The direct all-ones kernel is preferable conceptually because it displays the sum as an ordinary public linear functional and avoids the unnecessary scale factor.
+\end{remark}
+
+\subsection{Families of succinct public kernels}
+\label{sec:succinct-public-kernel-applications}
+
+The preceding examples use tensor-product weight vectors, but the protocol itself does not require tensor structure.  The exact condition needed for succinct verification is only that the public reversed generating polynomial can be evaluated cheaply.
+
+\begin{proposition}[Public kernel family principle]
+\label{prop:public-kernel-family-principle}
+Let \(\Theta\) be a parameter set and let
+\[
+  p_\theta:\B^n\to\F,
+  \qquad
+  \theta\in\Theta,
+\]
+be a family of public tables.  Suppose there is an algorithm that, on input \((\theta,\xi)\in\Theta\times L\), computes
+\[
+  K_\theta(\xi)
+  =\sum_{j=0}^{N-1}p_\theta(j)\xi^{N-1-j}
+\]
+in at most \(T_K(n)\) field operations, while \(K_\theta\in\F[X]_{<N}\) for every \(\theta\).  Then the claim
+\[
+  v=\sum_{w\in\B^n}t(w)p_\theta(w)
+\]
+for a table committed by \(w=\Enc_T(t)\) has a coefficient-extraction protocol with the soundness bound \eqref{eq:linear-functional-soundness} and application-specific verifier work \(O(T_K(n))\) per queried point.
+\end{proposition}
+
+\begin{proof}
+For fixed \(\theta\), apply \cref{thm:public-linear-functional-protocol} with public kernel \(K_p=K_\theta\).  The only extra verifier computation relative to the generic public-kernel protocol is evaluation of \(K_\theta\) at queried points, which costs at most \(T_K(n)\) by hypothesis.
+\end{proof}
+
+\begin{example}[Selector weights]
+\label{ex:selector-kernel}
+For a public subset \(S\subseteq\{0,\ldots,N-1\}\), the selector functional
+\[
+  \sum_{j\in S}t(j)
+\]
+has kernel
+\[
+  K_S(X)=\sum_{j\in S}X^{N-1-j}.
+\]
+If \(S\) has size \(s\), direct evaluation costs \(O(s\log N)\) field operations by binary exponentiation, and less when the exponents or the set \(S\) have additional structure.  Thus sparse public selectors fit the same protocol even without tensor factorization.
+\end{example}
+
+\begin{example}[Affine combinations of public kernels]
+\label{ex:affine-kernel-combination}
+Suppose \(p^{(1)},\ldots,p^{(r)}\) are public weight tables with kernels \(K_1,\ldots,K_r\).  For public scalars \(\lambda_1,\ldots,\lambda_r\), the combined functional
+\[
+  t\longmapsto
+  \sum_{a=1}^{r}\lambda_a\sum_w t(w)p^{(a)}(w)
+\]
+has kernel
+\[
+  K(X)=\sum_{a=1}^{r}\lambda_aK_a(X).
+\]
+Therefore public random linear combinations of already succinct kernels remain succinct.  This closure property will be useful when several public linear checks are batched later in the paper.
+\end{example}
+
+\subsection{What this section establishes}
+\label{sec:linear-functionals-summary}
+
+A single table-form Reed--Solomon commitment now supports all of the following without an algebraic Sumcheck reduction:
+\begin{enumerate}[leftmargin=*]
+  \item evaluation of the multilinear extension at any \(z\in\F^n\);
+  \item summation over the Boolean hypercube;
+  \item any public weighted sum whose reversed generating polynomial is efficiently evaluable.
+\end{enumerate}
+The proofs use no application-specific coding theorem beyond the generic public-kernel protocol.  The next step removes the assumption that the weight vector is public: the second factor will itself be committed, and inversion of the smooth domain will make its reversed generating polynomial available as a virtual word.  This yields the arbitrary committed inner-product argument.

@@ -1,0 +1,336 @@
+\section{Sparse R1CS from One Folding Batch}
+\label{sec:r1cs}
+
+The previous sections provide all algebraic primitives needed for rank-one constraint systems.  Let
+\[
+  A,B,C\in\F^{N\times N}
+\]
+be public sparse matrices and let $z:\B^n\to\F$ be the witness vector, identified with its length-$N$ table in the convention of \cref{sec:preliminaries}.  The R1CS relation is
+\begin{equation}
+  (Az)\had(Bz)=Cz.
+  \label{eq:r1cs-standard-relation}
+\end{equation}
+The standard Sumcheck route proves matrix evaluations and the coordinatewise product through multilinear reductions.  Here we instead introduce committed tables
+\[
+  a=Az,
+  \qquad
+  b=Bz,
+  \qquad
+  c=Cz,
+\]
+prove each sparse matrix--vector relation by \cref{sec:sparse-matvec}, and prove $a\had b=c$ by \cref{sec:hadamard}.  Crucially, these are not run as four independent protocols: all protected low-degree words are appended to one heterogeneous batch and are tested by one folding chain and one final set of queries.
+
+\subsection{The committed R1CS relation}
+\label{sec:r1cs-relation}
+
+For each $M\in\{A,B,C\}$, fix a sparse-entry representation
+\begin{equation}
+  (r_M,c_M,\mu_M):\B^n\longrightarrow \B^n\times\B^n\times\F
+  \label{eq:r1cs-sparse-representations}
+\end{equation}
+as in \cref{sec:sparse-representation}.  Thus
+\begin{equation}
+  (Mz)(i)
+  =\sum_{e:\,r_M(e)=i}\mu_M(e)z(c_M(e)).
+  \label{eq:r1cs-sparse-coordinate}
+\end{equation}
+Padding slots have coefficient $0$, and the ambient power of two is chosen large enough for the witness dimension and every sparse list.
+
+\begin{definition}[Committed sparse R1CS relation]
+\label{def:r1cs-relation}
+Fix $0<\delta\le(1-\rho)/2$.  The relation
+$\mathcal R^{\delta}_{\mathrm{R1CS}}[A,B,C]$ consists of pairs
+\[
+  ((w_z,w_a,w_b,w_c),(z,a,b,c))
+\]
+with $w_z,w_a,w_b,w_c\in\F^L$ and tables $z,a,b,c:\B^n\to\F$ such that
+\begin{align}
+  \Delta_{\mathrm{fib}}(w_z,\Enc_T(z))&\le\delta,
+  \label{eq:r1cs-distance-z}\\
+  \Delta_{\mathrm{fib}}(w_a,\Enc_T(a))&\le\delta,
+  \label{eq:r1cs-distance-a}\\
+  \Delta_{\mathrm{fib}}(w_b,\Enc_T(b))&\le\delta,
+  \label{eq:r1cs-distance-b}\\
+  \Delta_{\mathrm{fib}}(w_c,\Enc_T(c))&\le\delta,
+  \label{eq:r1cs-distance-c}\\
+  a&=Az,
+  \label{eq:r1cs-a}\\
+  b&=Bz,
+  \label{eq:r1cs-b}\\
+  c&=Cz,
+  \label{eq:r1cs-c}\\
+  a\had b&=c.
+  \label{eq:r1cs-had}
+\end{align}
+The four words form the oracle part of the instance and $(z,a,b,c)$ is the decoded witness.
+\end{definition}
+
+\begin{proposition}[Equivalence with the usual R1CS equation]
+\label{prop:r1cs-equivalence}
+For a table $z:\B^n\to\F$, the following are equivalent.
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item $z$ satisfies \eqref{eq:r1cs-standard-relation}.
+  \item There exist tables $a,b,c:\B^n\to\F$ satisfying \eqref{eq:r1cs-a}--\eqref{eq:r1cs-had}.
+\end{enumerate}
+Moreover, when they exist the three tables are uniquely determined by $z$:
+\[
+  a=Az,\qquad b=Bz,\qquad c=Cz.
+\]
+\end{proposition}
+
+\begin{proof}
+If \eqref{eq:r1cs-standard-relation} holds, set $a=Az$, $b=Bz$, and $c=Cz$.  Then \eqref{eq:r1cs-a}--\eqref{eq:r1cs-c} hold by definition and \eqref{eq:r1cs-had} is exactly \eqref{eq:r1cs-standard-relation}.  Conversely, substituting \eqref{eq:r1cs-a}--\eqref{eq:r1cs-c} into \eqref{eq:r1cs-had} gives \eqref{eq:r1cs-standard-relation}.  The three matrix products are deterministic functions of $z$, which gives uniqueness.
+\end{proof}
+
+The point of the auxiliary tables is therefore not to weaken the relation.  They expose the R1CS equation as three sparse linear maps followed by one coordinatewise multiplication, exactly the two relation types already supported by the coefficient-extraction framework.
+
+\subsection{One master batch for the whole R1CS instance}
+\label{sec:r1cs-master-batch}
+
+For $M\in\{A,B,C\}$, write $y_A=a$, $y_B=b$, and $y_C=c$.  Instantiate the sparse matrix--vector sub-batch of \cref{def:sparse-matvec-sub-batch} for the relation
+\begin{equation}
+  y_M=Mz.
+  \label{eq:r1cs-one-matvec}
+\end{equation}
+We use one shared geometric row-fingerprint challenge $\alpha$ for all three matrices.  The indexed-selection tagging challenges and logarithmic-derivative shifts may be independent for the six selections.  Sharing $\alpha$ is sound because $w_z,w_a,w_b,w_c$ are fixed before it is sampled; \cref{thm:r1cs-soundness} shows that a false system then has at most $N-1$ masking values of $\alpha$, not three separate root-error terms.
+
+\begin{definition}[R1CS heterogeneous sub-batch]
+\label{def:r1cs-sub-batch}
+Fix the outer challenges and all prover messages required by the three sparse matrix--vector reductions.  The batch $\mathfrak B_{\mathrm{R1CS}}$ is obtained by concatenating
+\begin{equation}
+  \mathfrak B_{\mathrm{SMV}}[A],
+  \qquad
+  \mathfrak B_{\mathrm{SMV}}[B],
+  \qquad
+  \mathfrak B_{\mathrm{SMV}}[C],
+  \label{eq:r1cs-three-smv-batches}
+\end{equation}
+with the final committed Hadamard claim
+\begin{equation}
+  a\had b=c.
+  \label{eq:r1cs-final-hadamard-claim}
+\end{equation}
+Exact repetitions of original commitments, public words, and virtual words are deduplicated before the master challenge of \cref{def:heterogeneous-batching-protocol} is sampled.
+\end{definition}
+
+Expanding \eqref{eq:r1cs-three-smv-batches} using \eqref{eq:sparse-matvec-decomposition}, the R1CS batch contains six indexed selections, three sparse contribution Hadamards, three sparse committed inner products, three geometric output linear functionals, and the final Hadamard relation.  After expanding the indexed selections themselves, there are sixteen Hadamard claims in total.  They all share the one Hadamard fingerprint pair $(\gamma,\theta)$ of \cref{sec:heterogeneous-batching}; therefore the Hadamard fingerprint error is paid once.
+
+\begin{definition}[Sparse R1CS protocol $\Pi_{\mathrm{R1CS}}$]
+\label{def:r1cs-protocol}
+The public data are the sparse representations of $A,B,C$ and their preprocessed verification-key data.  The oracle instance is $(w_z,w_a,w_b,w_c)$, fixed before any verifier challenge.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The verifier samples one shared row-fingerprint challenge
+  \begin{equation}
+    \alpha\leftarrow\F.
+    \label{eq:r1cs-alpha}
+  \end{equation}
+  \item For each $M\in\{A,B,C\}$, the parties perform the outer, pre-batching part of \cref{def:sparse-matvec-protocol}: the prover supplies the auxiliary source, row-weight, and contribution words; the verifier samples the two indexed-selection tags and shifts; and the prover supplies the corresponding inverse words and scalar messages.  All these words are fixed before the master batch challenge.
+  \item The final relation $a\had b=c$ and all Hadamard relations arising inside the three sparse reductions are prepared using the shared $(\gamma,\theta)$ required by \cref{def:heterogeneous-batching-protocol}.
+  \item The parties execute exactly one
+  \begin{equation}
+    \Pi_{\mathrm{Het}}\bigl(\mathfrak B_{\mathrm{R1CS}}\bigr).
+    \label{eq:r1cs-one-heterogeneous-batch}
+  \end{equation}
+\end{enumerate}
+\end{definition}
+
+Thus there is one master batching challenge, one folding chain, and one final $\kappa$-query test for the complete R1CS algebra.  The outer challenges exist only to reduce the matrix, lookup, and coordinatewise relations to the low-degree words protected by that single batch.
+
+\subsection{Completeness}
+\label{sec:r1cs-completeness}
+
+\begin{theorem}[Sparse R1CS completeness]
+\label{thm:r1cs-completeness}
+Suppose $(w_z,w_a,w_b,w_c)$ are honest table commitments and $z$ satisfies \eqref{eq:r1cs-standard-relation}, with $a=Az$, $b=Bz$, and $c=Cz$.  If every lookup shift and every DEEP point used by the batch avoids its pole set, then the honest prover in \cref{def:r1cs-protocol} is accepted with probability $1$.
+\end{theorem}
+
+\begin{proof}
+By \cref{prop:r1cs-equivalence}, the honest decoded tables satisfy the three sparse matrix--vector relations and the final Hadamard relation.  For each matrix $M\in\{A,B,C\}$, \cref{thm:sparse-matvec-completeness} supplies honest auxiliary words for $\mathfrak B_{\mathrm{SMV}}[M]$ and shows that every primitive relation in that sub-batch is true.  The final Hadamard relation is true by \eqref{eq:r1cs-standard-relation}, so \cref{thm:had-completeness} supplies its honest protected words.  Hence the concatenated batch $\mathfrak B_{\mathrm{R1CS}}$ has a joint witness.  Conditional perfect completeness follows from \cref{thm:heterogeneous-completeness}.
+\end{proof}
+
+\begin{remark}[Perfect completeness by rejection sampling]
+\label{rem:r1cs-perfect-completeness}
+The pole events are an artifact of writing DEEP and logarithmic-derivative virtual words as rational functions.  As in \cref{rem:had-perfect-completeness}, the verifier can rejection-sample the relevant extension-field challenges outside the explicitly known forbidden sets.  This yields perfect completeness without changing any algebraic relation.  If unrestricted challenges are preferred, a union bound gives an explicit completeness loss from the six lookup pole sets and the three shared Hadamard DEEP pole sets.
+\end{remark}
+
+\subsection{Soundness}
+\label{sec:r1cs-soundness}
+
+Let $s_{\mathrm{R1CS}}$ denote the number of distinct protected degree-$<N$ words in $\mathfrak B_{\mathrm{R1CS}}$ after exact deduplication.  Recall from \eqref{eq:indexed-selection-outer-error} that one indexed selection has outer bad-event bound
+\begin{equation}
+  \varepsilon_{\mathrm{Sel,out}}
+  =\frac{\binom{2N}{2}}{|\F|}
+   +\frac{2N-1}{|\F|}.
+  \label{eq:r1cs-selection-outer-error}
+\end{equation}
+With collision-free extension tagging, the first term is absent.
+
+The next lemma is the reason for sharing one matrix fingerprint challenge across $A,B,C$.
+
+\begin{lemma}[One geometric challenge detects a false matrix equation]
+\label{lem:r1cs-shared-alpha}
+Fix decoded tables $z,a,b,c$.  If at least one of
+\begin{equation}
+  a=Az,
+  \qquad
+  b=Bz,
+  \qquad
+  c=Cz
+  \label{eq:r1cs-three-matvec-equations}
+\end{equation}
+is false, then there exists a nonzero polynomial $D\in\F[T]$ of degree at most $N-1$ such that, for every $\alpha\in\F$ for which all three compressed sparse matrix identities hold, one has $D(\alpha)=0$.  Consequently the set of such $\alpha$ has cardinality at most $N-1$.
+\end{lemma}
+
+\begin{proof}
+Choose any one false equation in \eqref{eq:r1cs-three-matvec-equations}; for definiteness, choose the first in the order $A,B,C$.  If the chosen equation is $a\ne Az$, take the error polynomial $D_{A,z,a}$ of \eqref{eq:sparse-error-polynomial}; if it is $b\ne Bz$ or $c\ne Cz$, use the analogous polynomial for $B$ or $C$.  By \cref{lem:sparse-geometric-fingerprint}, this polynomial is nonzero, has degree at most $N-1$, and vanishes at every $\alpha$ for which that chosen false matrix equation passes its compressed geometric identity.  If all three compressed identities hold, the chosen one holds in particular, so $D(\alpha)=0$.  The root bound gives at most $N-1$ such challenges.
+\end{proof}
+
+\begin{lemma}[A joint R1CS batch witness gives an R1CS witness]
+\label{lem:r1cs-joint-witness}
+Fix all outer challenges.  Suppose $\mathfrak B_{\mathrm{R1CS}}$ has a joint witness, every indexed-selection tag used by one selected false sparse matrix equation is collision-free, and its two logarithmic-derivative shifts lie outside the corresponding bad-shift sets.  If the shared row challenge $\alpha$ is outside the root set of \cref{lem:r1cs-shared-alpha}, then the decoded tables satisfy
+\begin{equation}
+  a=Az,
+  \qquad b=Bz,
+  \qquad c=Cz,
+  \qquad a\had b=c.
+  \label{eq:r1cs-joint-all-relations}
+\end{equation}
+In particular, if any matrix equation is false or the final Hadamard equation is false, then outside the stated outer bad events the batch has no joint witness.
+\end{lemma}
+
+\begin{proof}
+If a matrix equation is false, choose the first false one as in \cref{lem:r1cs-shared-alpha}.  The corresponding sparse sub-batch is part of $\mathfrak B_{\mathrm{R1CS}}$.  Outside its two indexed-selection outer bad events, \cref{lem:sparse-joint-witness} implies the compressed matrix identity for that equation.  Since $\alpha$ is outside the root set from \cref{lem:r1cs-shared-alpha}, this is impossible.  Therefore a joint batch witness can exist only if all three matrix equations hold.
+
+Independently, the final Hadamard relation \eqref{eq:r1cs-final-hadamard-claim} is itself a component of $\mathfrak B_{\mathrm{R1CS}}$.  A joint witness for the heterogeneous batch contains decoded tables satisfying every primitive claim, hence in particular $a\had b=c$.  Combining the four relations gives \eqref{eq:r1cs-joint-all-relations}.
+\end{proof}
+
+The previous lemma deliberately charges indexed-selection errors only for one false matrix equation.  We do not need a union bound over all six selections to prove soundness: if the decoded R1CS instance is false because of a matrix equation, one fixed false matrix already suffices to rule out a joint witness.  If all three matrix equations are true but $a\had b\ne c$, the final Hadamard claim alone suffices.
+
+\begin{theorem}[Sparse R1CS soundness]
+\label{thm:r1cs-soundness}
+Assume
+\begin{equation}
+  p>N,
+  \qquad
+  0<\delta\le\frac{1-\rho}{2},
+  \qquad
+  2N<(1-\delta)M.
+  \label{eq:r1cs-parameters}
+\end{equation}
+If $(w_z,w_a,w_b,w_c)$ has no witness in $\mathcal R^{\delta}_{\mathrm{R1CS}}[A,B,C]$, then every deterministic prover is accepted by $\Pi_{\mathrm{R1CS}}$ with probability at most
+\begin{equation}
+\begin{split}
+  \varepsilon_{\mathrm{R1CS}}
+  \le{}&
+  \frac{N-1}{|\F|}
+  +2\varepsilon_{\mathrm{Sel,out}}
+  +\frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{R1CS}}-1)M}{|\F|}
+  \\
+  &+\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\end{split}
+\label{eq:r1cs-soundness-bound}
+\end{equation}
+The same bound holds for randomized provers by averaging.  Under collision-free extension tagging, delete the two $\binom{2N}{2}/|\F|$ contributions contained in $2\varepsilon_{\mathrm{Sel,out}}$.
+\end{theorem}
+
+\begin{proof}
+By \cref{prop:unique-table-near-word}, each of the four original commitment words has at most one table within fibre distance $\delta$.  If one has no such table, the heterogeneous batch cannot have a compatible joint witness for all occurrences of that commitment; \cref{thm:heterogeneous-soundness} then gives the batching, folding, and query terms in \eqref{eq:r1cs-soundness-bound}.
+
+Assume therefore that $w_z,w_a,w_b,w_c$ uniquely decode to $z,a,b,c$.  Since there is no R1CS witness, by \cref{prop:r1cs-equivalence} at least one of the three matrix equations or the final Hadamard equation is false.
+
+First suppose at least one matrix equation is false.  By \cref{lem:r1cs-shared-alpha}, all three compressed matrix identities can hold for at most $N-1$ values of the shared challenge $\alpha$, contributing the first term of \eqref{eq:r1cs-soundness-bound}.  Fix $\alpha$ outside this set and choose the first false matrix equation.  Only the two indexed selections belonging to that sparse reduction need to be faithful.  Their tag-collision and bad-shift events contribute at most $2\varepsilon_{\mathrm{Sel,out}}$.  Outside those events, \cref{lem:r1cs-joint-witness} shows that the master heterogeneous batch has no joint witness.
+
+If instead all three matrix equations hold, then $a\had b\ne c$.  In this case neither the $\alpha$ term nor the indexed-selection terms are needed, but we retain them in the uniform upper bound.  The final Hadamard relation is false, so the batch has no joint witness.
+
+In either case, outside the outer events already charged, apply \cref{thm:heterogeneous-soundness} to $\mathfrak B_{\mathrm{R1CS}}$.  Since the batch contains Hadamard relations, its remaining error is
+\[
+  \frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{R1CS}}-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\]
+The first of these terms is the one shared Hadamard fingerprint error for all sixteen Hadamard claims, including the final R1CS multiplication constraint.  Adding the outer probabilities proves \eqref{eq:r1cs-soundness-bound}.  Randomized provers follow by conditioning on their internal randomness and averaging.
+\end{proof}
+
+\begin{corollary}[R1CS knowledge by decoding]
+\label{cor:r1cs-knowledge}
+Under the hypotheses of \cref{thm:r1cs-soundness}, acceptance with probability larger than the right-hand side of \eqref{eq:r1cs-soundness-bound} implies that the unique decodings of $w_z,w_a,w_b,w_c$ exist and satisfy
+\[
+  a=Az,
+  \qquad
+  b=Bz,
+  \qquad
+  c=Cz,
+  \qquad
+  a\had b=c.
+\]
+Hence the decoded $z$ satisfies the ordinary R1CS equation \eqref{eq:r1cs-standard-relation}.  The witness is recoverable in polynomial time by Reed--Solomon unique decoding.
+\end{corollary}
+
+\begin{proof}
+This is the contrapositive of \cref{thm:r1cs-soundness}, followed by \cref{prop:r1cs-equivalence}.  Polynomial-time recoverability is the same unique-decoding statement used in \cref{cor:sparse-matvec-knowledge}.
+\end{proof}
+
+\subsection{Public inputs and the constant wire}
+\label{sec:r1cs-public-inputs}
+
+An NP statement normally fixes part of $z$ publicly, for example
+\[
+  z(0)=1
+\]
+and $z(j_t)=x_t$ for public input coordinates $j_1,\ldots,j_m$.  These conditions do not require a new protocol primitive.
+
+\begin{proposition}[Public coordinate constraints are public linear functionals]
+\label{prop:r1cs-public-coordinates}
+Let $J=\{j_1,\ldots,j_m\}\subseteq\{0,\ldots,N-1\}$ be public and let $x_1,\ldots,x_m\in\F$.  For a challenge $\lambda\in\F$, define the public table
+\begin{equation}
+  p_{J,\lambda}(j)
+  =\begin{cases}
+    \lambda^{t-1},&j=j_t,\\
+    0,&j\notin J.
+  \end{cases}
+  \label{eq:r1cs-public-selector-table}
+\end{equation}
+Then the public-input constraints $z(j_t)=x_t$ for all $t$ imply
+\begin{equation}
+  \ip{p_{J,\lambda}}{z}
+  =\sum_{t=1}^{m}\lambda^{t-1}x_t.
+  \label{eq:r1cs-public-input-fingerprint}
+\end{equation}
+If at least one coordinate constraint is false, \eqref{eq:r1cs-public-input-fingerprint} holds for at most $m-1$ values of $\lambda$.
+\end{proposition}
+
+\begin{proof}
+The displayed equality expands to
+\[
+  \sum_{t=1}^{m}\lambda^{t-1}z(j_t)
+  =\sum_{t=1}^{m}\lambda^{t-1}x_t.
+\]
+If some coordinate is wrong, their difference is a nonzero polynomial in $\lambda$ of degree at most $m-1$, so the root bound applies.
+\end{proof}
+
+The claim \eqref{eq:r1cs-public-input-fingerprint} is a public linear-functional claim of \cref{sec:linear-functionals}; its protected words can simply be appended to $\mathfrak B_{\mathrm{R1CS}}$ before the master challenge.  Thus the constant wire and public-input binding also share the same folding test.  If this optional check is used, add $(m-1)/|\F|$ to the outer soundness error.
+
+\subsection{Cost and structural consequence}
+\label{sec:r1cs-cost}
+
+At the relation level the reduction is
+\begin{equation}
+\boxed{
+  \mathrm{R1CS}(A,B,C;z)
+  =3\times\mathrm{SparseMatVec}
+   +1\times\mathrm{Hadamard}.
+}
+\label{eq:r1cs-decomposition-box}
+\end{equation}
+Using \eqref{eq:sparse-matvec-decomposition}, this becomes six indexed selections, three sparse contribution Hadamards, three committed inner products, three public geometric linear functionals, and one final Hadamard relation.  Every object is a table-form Kronecker commitment, a public succinct kernel, or a virtual word derived locally from such commitments.
+
+If the matrices have $K_A,K_B,K_C$ nonzero entries and the witness dimension is $d$, each sparse representation uses an ambient power of two
+\[
+  N_M=2^{\lceil\log_2\max\{K_M,d\}\rceil}
+\]
+(or a common power of two large enough for all three, as assumed in this section).  The public matrix data are therefore linear in the sparse input size rather than quadratic in $d$.  The online prover builds the sparse auxiliary tables in linear time in the padded sparse lengths, before Reed--Solomon encoding and the common folding backend.
+
+The cryptographic distinction from a Sumcheck-based R1CS reduction is now precise.  We do not modify Sumcheck or claim that Sumcheck itself requires post-quantum repair.  Instead, the multilinear algebra normally delegated to Sumcheck has been decomposed into coefficient-extraction, lookup, and Hadamard relations whose low-degree validity is enforced directly by one Reed--Solomon/FRI proximity argument.  The remaining questions for a complete SNARK concern compilation, zero knowledge, and concrete efficiency, not an unresolved R1CS algebraic reduction.

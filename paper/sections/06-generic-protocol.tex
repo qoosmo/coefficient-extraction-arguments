@@ -1,0 +1,825 @@
+\section{The Folding Backend and the Generic Coefficient-Extraction Protocol}
+\label{sec:generic-protocol}
+
+The previous sections reduced coefficient claims to the existence of several words that should all be Reed--Solomon codewords of the same degree bound.  This section supplies the common enforcement mechanism.  We first give a self-contained FRI-style folding proximity test for the base code $C_0=\RS_{\F}[L,N]$, including the soundness statement used later.  We then combine it with the universal split identity of \cref{thm:universal-split} to obtain a generic protocol for claims of the form
+\[
+  v=[X^{N-1}]U(X)K(X),
+  \qquad U,K\in\F[X]_{<N}.
+\]
+The protocol is deliberately stated for two potentially committed factors.  Public structured kernels are obtained by omitting the second factor from the random batch, and arbitrary committed inner products are obtained by taking the second factor to be a virtual reversal.
+
+\subsection{Two elementary probability lemmas}
+\label{sec:generic-probability}
+
+We use two counting facts repeatedly.  They are recorded here so that the soundness proof does not depend on an external probability formalism.
+
+\begin{lemma}[Sequential bad challenges]
+\label{lem:sequential-bad-challenges}
+Let $S_1,\ldots,S_t$ be finite nonempty sets.  For each $j\in[1,t]$, suppose that after every fixed prefix $(s_1,\ldots,s_{j-1})$ there are at most $b_j$ values $s_j\in S_j$ declared bad.  If $s_1,\ldots,s_t$ are sampled independently and uniformly, then
+\[
+  \Pr[\text{some round chooses a bad value}]
+  \le
+  \sum_{j=1}^{t}\frac{b_j}{|S_j|}.
+\]
+\end{lemma}
+
+\begin{proof}
+For a fixed round $j$, condition on the prefix $(s_1,\ldots,s_{j-1})$.  By hypothesis the conditional probability that $s_j$ is bad is at most $b_j/|S_j|$.  Averaging over prefixes gives the same unconditional bound.  A union bound over the $t$ rounds proves the claim.
+\end{proof}
+
+\begin{lemma}[Independent uniform queries]
+\label{lem:independent-uniform-queries}
+Let $\Omega$ be a finite nonempty set, let $D$ be a finite nonempty set, and let $W(\omega)\subseteq D$ be assigned to every $\omega\in\Omega$.  If $\omega$ is uniform in $\Omega$ and $\xi^{(1)},\ldots,\xi^{(\kappa)}$ are independent uniform points of $D$, independent of $\omega$, then
+\[
+  \Pr\bigl[\xi^{(1)},\ldots,\xi^{(\kappa)}\in W(\omega)\bigr]
+  =
+  \mathbb E_{\omega}\left[
+    \left(\frac{|W(\omega)|}{|D|}\right)^{\kappa}
+  \right].
+\]
+In particular, if $|W(\omega)|\le\pi|D|$ for every $\omega$ in an event $E\subseteq\Omega$, then
+\[
+  \Pr\bigl[E\text{ and }\xi^{(1)},\ldots,\xi^{(\kappa)}\in W(\omega)\bigr]
+  \le \pi^{\kappa}.
+\]
+\end{lemma}
+
+\begin{proof}
+For fixed $\omega$, exactly $|W(\omega)|^{\kappa}$ of the $|D|^{\kappa}$ ordered query tuples lie in $W(\omega)^{\kappa}$.  This gives the conditional probability.  Averaging over $\omega$ proves the first identity.  The second statement follows by restricting the expectation to $E$ and using $|W(\omega)|/|D|\le\pi$ there.
+\end{proof}
+
+\subsection{The kernel fold}
+\label{sec:generic-kernel-fold}
+
+For this subsection let $L'\le\Fq^\times$ be any smooth domain of order at least $2$.  For $w\in\F^{L'}$, write $w_{\mathrm e},w_{\mathrm o}\in\F^{(L')^2}$ for the even and odd parts of \cref{eq:evenodd-word}.
+
+\begin{definition}[Kernel fold]
+\label{def:kernel-fold}
+For $r\in\F$, define
+\begin{equation}
+  \operatorname{fold}_r(w)
+  \defeq
+  (2r-1)w_{\mathrm e}+(1-r)w_{\mathrm o}.
+  \label{eq:kernel-word-fold}
+\end{equation}
+If
+\[
+  P(X)=P_{\mathrm e}(X^2)+XP_{\mathrm o}(X^2),
+\]
+define
+\begin{equation}
+  \operatorname{pfold}_r(P)
+  \defeq
+  (2r-1)P_{\mathrm e}+(1-r)P_{\mathrm o}.
+  \label{eq:kernel-poly-fold}
+\end{equation}
+\end{definition}
+
+\begin{lemma}[Local formula and line form]
+\label{lem:fold-local-line}
+Let $w\in\F^{L'}$ and $r\in\F$.
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item For $\xi\in L'$,
+  \begin{equation}
+  \operatorname{fold}_r(w)(\xi^2)
+  =
+  \frac{((2r-1)\xi+(1-r))w(\xi)
+       +((2r-1)\xi-(1-r))w(-\xi)}{2\xi}.
+  \label{eq:fold-local-formula}
+  \end{equation}
+  \item The map $w\mapsto\operatorname{fold}_r(w)$ is $\F$-linear and fibre local.
+  \item Put
+  \[
+    u_0=w_{\mathrm o}-w_{\mathrm e},
+    \qquad
+    u_1=2w_{\mathrm e}-w_{\mathrm o}.
+  \]
+  Then
+  \begin{equation}
+    \operatorname{fold}_r(w)=u_0+ru_1,
+    \label{eq:fold-line-form}
+  \end{equation}
+  and conversely
+  \[
+    w_{\mathrm e}=u_0+u_1,
+    \qquad
+    w_{\mathrm o}=2u_0+u_1.
+  \]
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Substitute the definitions
+\[
+  w_{\mathrm e}(\xi^2)=\frac{w(\xi)+w(-\xi)}2,
+  \qquad
+  w_{\mathrm o}(\xi^2)=\frac{w(\xi)-w(-\xi)}{2\xi}
+\]
+into \eqref{eq:kernel-word-fold} and collect the coefficients of $w(\xi)$ and $w(-\xi)$.  This gives \eqref{eq:fold-local-formula}.  Linearity and fibre locality follow immediately.  Finally,
+\[
+  (2r-1)w_{\mathrm e}+(1-r)w_{\mathrm o}
+  =(w_{\mathrm o}-w_{\mathrm e})
+   +r(2w_{\mathrm e}-w_{\mathrm o}),
+\]
+which is \eqref{eq:fold-line-form}; adding the two displayed definitions of $u_0,u_1$ gives $w_{\mathrm e}=u_0+u_1$, and $2u_0+u_1=w_{\mathrm o}$.
+\end{proof}
+
+\begin{proposition}[Consistency of word and polynomial folding]
+\label{prop:fold-consistency}
+Let $|L'|=M'$, let $1\le d\le M'/2$, let $P\in\F[X]_{<2d}$, and put $w=\ev_{L'}(P)$.  Then
+\begin{equation}
+  \operatorname{fold}_r(w)
+  =
+  \ev_{(L')^2}\bigl(\operatorname{pfold}_r(P)\bigr).
+  \label{eq:fold-consistency}
+\end{equation}
+In particular,
+\[
+  \operatorname{fold}_r\bigl(\RS_{\F}[L',2d]\bigr)
+  \subseteq
+  \RS_{\F}[(L')^2,d].
+\]
+\end{proposition}
+
+\begin{proof}
+By \cref{lem:evenodd-word}(4),
+\[
+  w_{\mathrm e}=\ev_{(L')^2}(P_{\mathrm e}),
+  \qquad
+  w_{\mathrm o}=\ev_{(L')^2}(P_{\mathrm o}).
+\]
+Linearity of evaluation and \cref{def:kernel-fold} give \eqref{eq:fold-consistency}.  Since $P_{\mathrm e},P_{\mathrm o}\in\F[X]_{<d}$, also $\operatorname{pfold}_r(P)\in\F[X]_{<d}$.
+\end{proof}
+
+For $r=(r_1,\ldots,r_j)\in\F^j$, write
+\[
+  \operatorname{pfold}^{(j)}_r
+  =
+  \operatorname{pfold}_{r_j}\circ\cdots\circ\operatorname{pfold}_{r_1},
+\]
+with $\operatorname{pfold}^{(0)}$ the identity.
+
+\subsection{The folding proximity test}
+\label{sec:folding-test}
+
+Fix integers $1\le\ell\le n$ and $\kappa\ge1$.  For $j\in[0,\ell]$, let
+\[
+  L_j=L^{2^j},
+  \qquad
+  M_j=M/2^j,
+  \qquad
+  N_j=N/2^j,
+  \qquad
+  C_j=\RS_{\F}[L_j,N_j].
+\]
+Every $C_j$ has rate $\rho=N/M$.
+
+\begin{definition}[Folding proximity test]
+\label{def:folding-test}
+The protocol $\Pi_{\mathrm{FT}}[\ell,\kappa]$ has as instance an oracle word $w_0\in\F^L$.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The verifier samples $r_1\in\F$.
+  \item For $j=2,\ldots,\ell$, after seeing $r_1,\ldots,r_{j-1}$ the prover sends an oracle word $w_{j-1}\in\F^{L_{j-1}}$, and the verifier samples $r_j\in\F$.
+  \item After $r_1,\ldots,r_\ell$ are fixed, the prover sends a polynomial
+  \[
+    P\in\F[X]_{<N_\ell}
+  \]
+  in coefficient form.  Put $w_\ell=\ev_{L_\ell}(P)$.
+  \item The verifier samples independent uniform points
+  \[
+    \xi^{(1)},\ldots,\xi^{(\kappa)}\in L.
+  \]
+  For each query point $\xi=\xi^{(i)}$ and each level $j\in[1,\ell]$, it checks
+  \begin{equation}
+    \operatorname{fold}_{r_j}(w_{j-1})(\xi^{2^j})
+    =
+    w_j(\xi^{2^j}).
+    \label{eq:fold-check}
+  \end{equation}
+\end{enumerate}
+For $j\in[1,\ell]$, write
+\[
+  \widehat w_j=\operatorname{fold}_{r_j}(w_{j-1}).
+\]
+\end{definition}
+
+The left side of \eqref{eq:fold-check} is computed by reading $w_{j-1}$ on the fibre above $\xi^{2^j}$, namely at $\pm\xi^{2^{j-1}}$.  For $j<\ell$, the right side is among the values read at the next level; at the last level it is obtained by evaluating the explicit polynomial $P$.
+
+\begin{proposition}[Completeness of folding]
+\label{prop:folding-completeness}
+If $w_0=\ev_L(U)$ for some $U\in\F[X]_{<N}$, then the honest prover defined recursively by
+\[
+  U_j=\operatorname{pfold}_{r_j}(U_{j-1}),
+  \qquad U_0=U,
+\]
+with $w_j=\ev_{L_j}(U_j)$ and $P=U_\ell$, is accepted with probability $1$.
+\end{proposition}
+
+\begin{proof}
+By \cref{prop:fold-consistency},
+\[
+  \operatorname{fold}_{r_j}(w_{j-1})
+  =\ev_{L_j}(U_j)=w_j
+\]
+for every level.  Hence every check \eqref{eq:fold-check} holds at every point.
+\end{proof}
+
+\subsection{Good folding challenges}
+\label{sec:good-folding-challenges}
+
+For a word $w\in\F^{L_j}$ satisfying $\Delta_{\mathrm{fib}}(w,C_j)\le\delta$, let $\operatorname{dec}_j(w)$ denote the unique codeword in $C_j$ within fibre distance $\delta$.  Uniqueness follows from \cref{lem:hamming-fibre,prop:rs-parameters}.  We use this notation only when such a codeword exists.
+
+\begin{lemma}[Folding a fibre-far word]
+\label{lem:folding-far-word}
+Let $j\in[0,\ell-1]$ and let $w\in\F^{L_j}$ satisfy
+\[
+  \Delta_{\mathrm{fib}}(w,C_j)>\delta.
+\]
+Then
+\begin{equation}
+  \left|
+    \left\{r\in\F:
+      \Delta(\operatorname{fold}_r(w),C_{j+1})\le\delta
+    \right\}
+  \right|
+  \le M_{j+1}.
+  \label{eq:folding-far-word-bound}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Suppose instead that the set in \eqref{eq:folding-far-word-bound} has more than $M_{j+1}$ elements.  By \cref{lem:fold-local-line},
+\[
+  \operatorname{fold}_r(w)=u_0+ru_1,
+\]
+where $u_0=w_{\mathrm o}-w_{\mathrm e}$ and $u_1=2w_{\mathrm e}-w_{\mathrm o}$ are words on $L_{j+1}$.  Apply \cref{thm:correlated-agreement} with $t=1$ to the code $C_{j+1}$.  There exist a set $T\subseteq L_{j+1}$ with $|T|\ge(1-\delta)M_{j+1}$ and codewords $c_0,c_1\in C_{j+1}$ such that $u_0=c_0$ and $u_1=c_1$ on $T$.
+
+Let $P_0,P_1\in\F[X]_{<N_{j+1}}$ represent $c_0,c_1$, and define
+\[
+  E=P_0+P_1,
+  \qquad
+  O=2P_0+P_1,
+  \qquad
+  Q(X)=E(X^2)+XO(X^2).
+\]
+Then $Q\in\F[X]_{<N_j}$.  By the inverse relations in \cref{lem:fold-local-line}, $w_{\mathrm e}=\ev(E)$ and $w_{\mathrm o}=\ev(O)$ on $T$.  Therefore for every $\eta\in T$ and every $\xi\in L_j$ with $\xi^2=\eta$, \cref{lem:evenodd-word}(3) gives
+\[
+  w(\pm\xi)=E(\eta)\pm\xi O(\eta)=Q(\pm\xi).
+\]
+Thus $w$ agrees with the codeword $\ev_{L_j}(Q)\in C_j$ on all fibres above $T$, so \cref{lem:hamming-fibre} gives $\Delta_{\mathrm{fib}}(w,C_j)\le\delta$, a contradiction.
+\end{proof}
+
+\begin{lemma}[A fibre error survives all but one challenges]
+\label{lem:fibre-error-survives}
+Let $j\in[0,\ell-1]$, let $w,c\in\F^{L_j}$, and let $\eta\in L_{j+1}$ be a fibre on which $w$ and $c$ differ.  Then there is at most one $r\in\F$ satisfying
+\[
+  \operatorname{fold}_r(w)(\eta)
+  =
+  \operatorname{fold}_r(c)(\eta).
+\]
+\end{lemma}
+
+\begin{proof}
+Put $y=w-c$.  By linearity and \cref{lem:fold-local-line},
+\[
+  \operatorname{fold}_r(y)(\eta)
+  =
+  (y_{\mathrm o}(\eta)-y_{\mathrm e}(\eta))
+  +r(2y_{\mathrm e}(\eta)-y_{\mathrm o}(\eta)),
+\]
+a polynomial of degree at most $1$ in $r$.  If it were the zero polynomial, the inverse formulas of \cref{lem:fold-local-line} would give $y_{\mathrm e}(\eta)=y_{\mathrm o}(\eta)=0$.  By \cref{lem:evenodd-word}(3), $y$ would vanish on the fibre above $\eta$, contrary to hypothesis.  Hence the polynomial is nonzero and has at most one root.
+\end{proof}
+
+\begin{definition}[Good folding challenge]
+\label{def:good-folding-challenge}
+Let $j\in[1,\ell]$, let $w\in\F^{L_{j-1}}$, and let $r\in\F$.  We call $r$ \emph{good for $w$ at level $j$} if the following holds.
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item If $\Delta_{\mathrm{fib}}(w,C_{j-1})>\delta$, then
+  \[
+    \Delta(\operatorname{fold}_r(w),C_j)>\delta.
+  \]
+  \item If $\Delta_{\mathrm{fib}}(w,C_{j-1})\le\delta$, put $c=\operatorname{dec}_{j-1}(w)$.  For every fibre $\eta\in L_j$ on which $w$ and $c$ differ,
+  \[
+    \operatorname{fold}_r(w)(\eta)
+    \ne
+    \operatorname{fold}_r(c)(\eta).
+  \]
+\end{enumerate}
+\end{definition}
+
+\begin{lemma}[Few bad folding challenges]
+\label{lem:few-bad-folding-challenges}
+For fixed $j\in[1,\ell]$ and $w\in\F^{L_{j-1}}$, at most $M_j$ values $r\in\F$ are not good for $w$ at level $j$.
+\end{lemma}
+
+\begin{proof}
+In the first case of \cref{def:good-folding-challenge}, apply \cref{lem:folding-far-word}.  In the second case, at most $M_j$ fibres are bad, and by \cref{lem:fibre-error-survives} each bad fibre excludes at most one value of $r$.  A union bound on excluded values gives the result.
+\end{proof}
+
+\begin{lemma}[One sound folding step]
+\label{lem:one-sound-folding-step}
+Let $j\in[1,\ell]$, let $w\in\F^{L_{j-1}}$, and let $r$ be good for $w$ at level $j$.  Suppose $c'\in C_j$ and
+\[
+  Y=\{\eta\in L_j:\operatorname{fold}_r(w)(\eta)=c'(\eta)\}
+\]
+satisfies $|Y|\ge(1-\delta)M_j$.  Then
+\[
+  \Delta_{\mathrm{fib}}(w,C_{j-1})\le\delta.
+\]
+If $c=\operatorname{dec}_{j-1}(w)$, then
+\[
+  \operatorname{fold}_r(c)=c',
+\]
+and $w=c$ on the complete fibre above every $\eta\in Y$.
+\end{lemma}
+
+\begin{proof}
+Since $c'$ agrees with $\operatorname{fold}_r(w)$ on at least $(1-\delta)M_j$ positions,
+\[
+  \Delta(\operatorname{fold}_r(w),C_j)\le\delta.
+\]
+Goodness therefore excludes case (1) of \cref{def:good-folding-challenge}, so $c=\operatorname{dec}_{j-1}(w)$ exists.  By \cref{prop:fold-consistency}, $\operatorname{fold}_r(c)\in C_j$.
+
+The words $w$ and $c$ agree on all fibres above at least $(1-\delta)M_j$ points of $L_j$.  By fibre locality, $\operatorname{fold}_r(w)$ and $\operatorname{fold}_r(c)$ agree on those points.  They also have the common intermediary $\operatorname{fold}_r(w)$ with $c'$ on $Y$.  Hence \cref{lem:hamming-triangle} implies that $\operatorname{fold}_r(c)$ and $c'$ agree on at least
+\[
+  (1-2\delta)M_j
+  \ge
+  \rho M_j
+  =N_j
+\]
+points.  Two codewords of $C_j$ that agree on $N_j$ points are equal by \cref{prop:rs-parameters}(2), so $\operatorname{fold}_r(c)=c'$.
+
+Finally, if $\eta\in Y$, then
+\[
+  \operatorname{fold}_r(w)(\eta)
+  =c'(\eta)
+  =\operatorname{fold}_r(c)(\eta).
+\]
+Condition (2) in \cref{def:good-folding-challenge} therefore implies that $w=c$ on the fibre above $\eta$.
+\end{proof}
+
+\subsection{Witness sets and the codeword chain}
+\label{sec:folding-witness-sets}
+
+Fix a deterministic prover for \cref{def:folding-test}.  The words $w_j$ are then deterministic functions of the preceding folding challenges.  For $j\in[1,\ell]$, define the failed-check set
+\[
+  B_j
+  \defeq
+  \{\eta\in L_j:\widehat w_j(\eta)\ne w_j(\eta)\}.
+\]
+
+\begin{definition}[Witness sets]
+\label{def:folding-witness-sets}
+For $c\in C_0$, let
+\[
+  W_0(c)
+  \defeq
+  \{\xi\in L:w_0(\xi)=c(\xi)\text{ and }w_0(-\xi)=c(-\xi)\}.
+\]
+For $j\in[1,\ell]$ and $c\in C_j$, define
+\[
+  W_j(c)
+  \defeq
+  \left\{
+    \xi\in L:
+    \begin{array}{l}
+      \xi^{2^i}\notin B_i\text{ for every }i\in[1,j-1],\\
+      \widehat w_j(\xi^{2^j})=c(\xi^{2^j})
+    \end{array}
+  \right\}.
+\]
+Put
+\[
+  \operatorname{dens}_j(c)=\frac{|W_j(c)|}{M}.
+\]
+\end{definition}
+
+\begin{lemma}[Acceptance is membership in the final witness set]
+\label{lem:acceptance-witness-set}
+For fixed folding challenges $r_1,\ldots,r_\ell$, a point $\xi\in L$ passes all fold checks if and only if
+\[
+  \xi\in W_\ell(w_\ell).
+\]
+Consequently, conditioned on the folding challenges, the probability that all $\kappa$ independent query points pass is
+\[
+  \operatorname{dens}_\ell(w_\ell)^\kappa.
+\]
+\end{lemma}
+
+\begin{proof}
+By definition, $\xi\in W_\ell(w_\ell)$ means that the checks at levels $1,\ldots,\ell-1$ do not fail and that
+\[
+  \widehat w_\ell(\xi^{2^\ell})=w_\ell(\xi^{2^\ell}),
+\]
+which is precisely the last check.  The probability statement follows because the $\kappa$ query points are independent and uniform in $L$.
+\end{proof}
+
+\begin{lemma}[One round of the codeword chain]
+\label{lem:one-round-codeword-chain}
+Let $j\in[1,\ell]$ and suppose $r_j$ is good for $w_{j-1}$ at level $j$.  If $c'\in C_j$ satisfies
+\[
+  \operatorname{dens}_j(c')\ge1-\delta,
+\]
+then $c=\operatorname{dec}_{j-1}(w_{j-1})$ exists,
+\[
+  \operatorname{fold}_{r_j}(c)=c',
+  \qquad
+  W_j(c')\subseteq W_{j-1}(c),
+\]
+and therefore $\operatorname{dens}_{j-1}(c)\ge1-\delta$.
+\end{lemma}
+
+\begin{proof}
+Let
+\[
+  Y=\{\eta\in L_j:\widehat w_j(\eta)=c'(\eta)\}.
+\]
+Every $\xi\in W_j(c')$ maps to a point $\xi^{2^j}\in Y$.  The map $\xi\mapsto\xi^{2^j}$ is $2^j$-to-one from $L$ onto $L_j$, hence
+\[
+  |Y|\ge\frac{|W_j(c')|}{2^j}
+  \ge(1-\delta)M_j.
+\]
+Apply \cref{lem:one-sound-folding-step}; this gives existence of $c$, the equality $\operatorname{fold}_{r_j}(c)=c'$, and equality $w_{j-1}=c$ on every fibre above $Y$.
+
+Now let $\xi\in W_j(c')$.  At level $j-1$, the point $\xi^{2^{j-1}}$ lies in the fibre above $\xi^{2^j}\in Y$, so $w_{j-1}$ and $c$ agree there and at its negative.  If $j=1$, this is exactly $\xi\in W_0(c)$.  If $j>1$, the membership conditions defining $W_j(c')$ already guarantee all earlier fold checks, while equality $w_{j-1}=c$ on the relevant fibre converts the level-$(j-1)$ check into the defining equality for $W_{j-1}(c)$.  Thus $W_j(c')\subseteq W_{j-1}(c)$.
+\end{proof}
+
+\begin{proposition}[Codeword chain]
+\label{prop:codeword-chain}
+Suppose every $r_j$ is good for $w_{j-1}$ and
+\[
+  \operatorname{dens}_\ell(w_\ell)\ge1-\delta.
+\]
+Then there exist codewords $c_j\in C_j$, $j\in[0,\ell]$, with $c_\ell=w_\ell$, such that
+\[
+  c_j=\operatorname{dec}_j(w_j)
+  \quad (j<\ell),
+  \qquad
+  \operatorname{fold}_{r_{j+1}}(c_j)=c_{j+1},
+\]
+and
+\[
+  W_\ell(w_\ell)\subseteq W_j(c_j)
+  \qquad\text{for every }j.
+\]
+In particular,
+\begin{equation}
+  \Delta_{\mathrm{fib}}(w_0,C_0)\le\delta.
+  \label{eq:codeword-chain-close}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Apply \cref{lem:one-round-codeword-chain} successively for $j=\ell,\ell-1,\ldots,1$.  The density hypothesis needed at each step follows from the containment of witness sets obtained at the preceding step.  The final codeword $c_0$ agrees with $w_0$ on every complete fibre represented in $W_\ell(w_\ell)$, whose density is at least $1-\delta$, proving \eqref{eq:codeword-chain-close}.
+\end{proof}
+
+\subsection{Soundness of the folding backend}
+\label{sec:folding-soundness}
+
+Define
+\begin{equation}
+  \varepsilon_{\mathrm{fold}}
+  \defeq
+  \sum_{j=1}^{\ell}\frac{M_j}{|\F|}
+  =
+  \frac{M(1-2^{-\ell})}{|\F|}
+  <\frac{M}{|\F|}.
+  \label{eq:epsilon-fold}
+\end{equation}
+
+\begin{theorem}[Folding soundness]
+\label{thm:folding-soundness}
+Fix a deterministic prover for $\Pi_{\mathrm{FT}}[\ell,\kappa]$ and an instance $w_0\in\F^L$.  Let $\mathsf{Good}$ be the event that every $r_j$ is good for $w_{j-1}$ at level $j$.  Then:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item $\Pr[\neg\mathsf{Good}]\le\varepsilon_{\mathrm{fold}}$;
+  \item conditioned on $\mathsf{Good}$, either $\operatorname{dens}_\ell(w_\ell)<1-\delta$, or the conclusions of \cref{prop:codeword-chain} hold;
+  \item if $\Delta_{\mathrm{fib}}(w_0,C_0)>\delta$, then the verifier accepts with probability at most
+  \begin{equation}
+    \varepsilon_{\mathrm{fold}}+(1-\delta)^\kappa.
+    \label{eq:folding-soundness-bound}
+  \end{equation}
+\end{enumerate}
+The same bound holds for randomized provers whose internal randomness is independent of the verifier challenges.
+\end{theorem}
+
+\begin{proof}
+For (1), once $r_1,\ldots,r_{j-1}$ are fixed, the word $w_{j-1}$ is fixed.  By \cref{lem:few-bad-folding-challenges}, at most $M_j$ values of $r_j$ are bad.  Apply \cref{lem:sequential-bad-challenges}.
+
+Item (2) is exactly \cref{prop:codeword-chain} when the final density is at least $1-\delta$.
+
+For (3), suppose $\Delta_{\mathrm{fib}}(w_0,C_0)>\delta$.  On $\mathsf{Good}$, item (2) forces
+\[
+  \operatorname{dens}_\ell(w_\ell)<1-\delta,
+\]
+otherwise \cref{prop:codeword-chain} would contradict the hypothesis.  By \cref{lem:acceptance-witness-set,lem:independent-uniform-queries}, acceptance together with $\mathsf{Good}$ has probability at most $(1-\delta)^\kappa$.  Add the probability of $\neg\mathsf{Good}$ from (1).
+
+For a randomized prover, condition on its internal random tape.  The deterministic bound applies to every fixed tape; averaging preserves the same upper bound.
+\end{proof}
+
+\subsection{Virtual folding levels and higher arity}
+\label{sec:virtual-folding-levels}
+
+The prover need not commit to every intermediate folded word.  This standard optimization is useful later because all application protocols already open several source words per query.
+
+\begin{definition}[Committed folding levels]
+\label{def:committed-folding-levels}
+Let $\mathcal C\subseteq[1,\ell-1]$.  The test $\Pi^{\mathcal C}_{\mathrm{FT}}[\ell,\kappa]$ is obtained from \cref{def:folding-test} by requiring an oracle $w_j$ only when $j\in\mathcal C$.  If $j\notin\mathcal C$, define the virtual level
+\[
+  w_j=\widehat w_j=\operatorname{fold}_{r_j}(w_{j-1}).
+\]
+The verifier checks only the levels in $\mathcal C\cup\{\ell\}$, computing skipped folds locally from the previous committed level.
+\end{definition}
+
+\begin{proposition}[Virtual levels preserve soundness]
+\label{prop:virtual-levels}
+For every $\mathcal C\subseteq[1,\ell-1]$, \cref{thm:folding-soundness} holds for $\Pi^{\mathcal C}_{\mathrm{FT}}[\ell,\kappa]$ with exactly the same error bound.
+\end{proposition}
+
+\begin{proof}
+Every prover for the sparse-level protocol canonically defines a prover for the full protocol: at an omitted level it sends the deterministic virtual word $\operatorname{fold}_{r_j}(w_{j-1})$.  The omitted fold check then holds identically.  At a committed level, the full verifier and the sparse-level verifier compute the same iterated fold from the same previously committed word.  Hence their acceptance predicates coincide for every challenge sequence.  Apply \cref{thm:folding-soundness} to the induced full-protocol prover.
+\end{proof}
+
+For an integer $k\ge1$, taking
+\[
+  \mathcal C_k=\{k,2k,3k,\ldots\}\cap[1,\ell-1]
+\]
+corresponds to folding arity $2^k$.  No soundness term changes; only the query geometry and Merkle-authentication cost change.
+
+\subsection{The generic coefficient-extraction relation}
+\label{sec:generic-ce-relation}
+
+We now attach the folding backend to the universal coefficient identity.
+
+\begin{definition}[Coefficient-extraction relation]
+\label{def:generic-ce-relation}
+For $0<\delta\le\delta_*$, define $\mathcal R^{\delta}_{\mathrm{CE}}$ as the set of pairs
+\[
+  \bigl((w_U,w_K;v),(U,K)\bigr)
+\]
+with
+\[
+  w_U,w_K\in\F^L,
+  \qquad
+  U,K\in\F[X]_{<N},
+  \qquad
+  v\in\F,
+\]
+such that
+\begin{equation}
+  \Delta_{\mathrm{fib}}(w_U,\ev_L(U))\le\delta,
+  \qquad
+  \Delta_{\mathrm{fib}}(w_K,\ev_L(K))\le\delta,
+  \label{eq:generic-ce-distance}
+\end{equation}
+and
+\begin{equation}
+  v=[X^{N-1}]U(X)K(X).
+  \label{eq:generic-ce-value}
+\end{equation}
+\end{definition}
+
+\begin{definition}[Generic coefficient-extraction protocol $\Pi_{\mathrm{CE}}$]
+\label{def:generic-ce-protocol}
+The instance is $(w_U,w_K;v)$ with oracle words $w_U,w_K\in\F^L$ and $v\in\F$.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The prover sends an oracle $w_A\in\F^L$.  The verifier samples $\beta\in\F$.
+  \item Define the virtual high-part word
+  \begin{equation}
+    h=\mathsf H[w_U,w_K,w_A;v]
+    \label{eq:generic-ce-high-word}
+  \end{equation}
+  as in \cref{def:virtual-high-word}, and form the virtual batch
+  \begin{equation}
+    w_0^{(\beta)}
+    =
+    w_U+\beta w_K+\beta^2w_A+\beta^3h.
+    \label{eq:generic-ce-batch}
+  \end{equation}
+  \item Run $\Pi_{\mathrm{FT}}[\ell,\kappa]$, or any sparse-level variant of \cref{def:committed-folding-levels}, on $w_0^{(\beta)}$.
+\end{enumerate}
+The verifier never receives $h$ as an oracle: whenever the folding verifier asks for $w_0^{(\beta)}(\xi)$, it queries the three source oracles at $\xi$, computes $h(\xi)$ by \eqref{eq:virtual-high-word}, and evaluates \eqref{eq:generic-ce-batch}.
+\end{definition}
+
+\begin{theorem}[Completeness of the generic protocol]
+\label{thm:generic-ce-completeness}
+Suppose
+\[
+  w_U=\ev_L(U),
+  \qquad
+  w_K=\ev_L(K),
+  \qquad
+  U,K\in\F[X]_{<N},
+\]
+and
+\[
+  v=[X^{N-1}]UK.
+\]
+Then the honest prover is accepted by $\Pi_{\mathrm{CE}}$ with probability $1$.
+\end{theorem}
+
+\begin{proof}
+By \cref{thm:universal-split}, there exist unique $A,H\in\F[X]_{<N}$ such that
+\[
+  XUK=A+vX^N+X^{N+1}H.
+\]
+The honest prover sends $w_A=\ev_L(A)$.  By \cref{lem:virtual-high-honest}, the virtual word in \eqref{eq:generic-ce-high-word} is $h=\ev_L(H)$.  Therefore
+\[
+  w_0^{(\beta)}
+  =
+  \ev_L(U+\beta K+\beta^2A+\beta^3H)
+  \in C_0
+\]
+for every $\beta\in\F$.  Completeness now follows from \cref{prop:folding-completeness}.
+\end{proof}
+
+\subsection{Batching soundness for coefficient extraction}
+\label{sec:generic-ce-batching}
+
+The batch \eqref{eq:generic-ce-batch} is a degree-$3$ curve in the challenge $\beta$.  Correlated agreement therefore gives simultaneous low-degree explanations for the four component words whenever too many values of $\beta$ make the batch close to the code.
+
+\begin{lemma}[Coefficient-extraction batching lemma]
+\label{lem:generic-ce-batching}
+Let $w_U,w_K,w_A\in\F^L$, $v\in\F$, and let
+\[
+  h=\mathsf H[w_U,w_K,w_A;v].
+\]
+For $\beta\in\F$, define $w_0^{(\beta)}$ by \eqref{eq:generic-ce-batch}.  Let $G$ be the set of $\beta$ for which there exist a codeword $c_\beta\in C_0$ and a fibre-closed set $T_\beta\subseteq L$ with
+\[
+  |T_\beta|\ge(1-\delta)M
+\]
+such that $w_0^{(\beta)}=c_\beta$ on $T_\beta$.  Assume
+\begin{equation}
+  2N<(1-\delta)M.
+  \label{eq:generic-degree-margin}
+\end{equation}
+If
+\[
+  |G|>3M,
+\]
+then the instance $(w_U,w_K;v)$ has a witness in $\mathcal R^{\delta}_{\mathrm{CE}}$.
+\end{lemma}
+
+\begin{proof}
+For every $\beta\in G$, the batch is within Hamming distance $\delta$ of $C_0$.  Apply \cref{thm:correlated-agreement} with $t=3$ to the four words
+\[
+  u_0=w_U,
+  \quad
+  u_1=w_K,
+  \quad
+  u_2=w_A,
+  \quad
+  u_3=h.
+\]
+There exist a set $T\subseteq L$, $|T|\ge(1-\delta)M$, and polynomials $P_0,P_1,P_2,P_3\in\F[X]_{<N}$ such that
+\[
+  u_i(\xi)=P_i(\xi)
+  \qquad
+  (i=0,1,2,3;\ \xi\in T).
+\]
+
+Define
+\[
+  \Phi(X)
+  =
+  XP_0(X)P_1(X)-P_2(X)-vX^N-X^{N+1}P_3(X).
+\]
+By \cref{lem:universal-identity}, $\deg\Phi\le2N$.  For $\xi\in T$, the defining identity of the virtual high-part word gives
+\[
+  \Phi(\xi)
+  =
+  \xi w_U(\xi)w_K(\xi)-w_A(\xi)-v\xi^N-\xi^{N+1}h(\xi)
+  =0.
+\]
+By \eqref{eq:generic-degree-margin}, $|T|>2N\ge\deg\Phi$, so \cref{lem:root-bound} implies $\Phi=0$.  Hence \cref{lem:universal-identity} gives
+\[
+  v=[X^{N-1}]P_0P_1.
+\]
+
+It remains to show fibre distance at most $\delta$ for the first two source words.  Correlated agreement gives only the common point set $T$, which need not be fibre-closed.  Choose any $\beta\in G$ whose pointwise discrepancy polynomial against the correlated-agreement codewords does not vanish outside $T$; we show that such a $\beta$ exists and that its fibre-closed agreement set is contained in $T$.
+
+For $\xi\notin T$, define
+\[
+  d_\xi(Z)
+  =
+  \sum_{i=0}^{3}Z^i\bigl(u_i(\xi)-P_i(\xi)\bigr).
+\]
+By maximality of $T$ after enlarging it to contain every point where all four equalities hold, $d_\xi$ is a nonzero polynomial of degree at most $3$.  The union of its roots over $\xi\notin T$ has cardinality at most
+\[
+  3|L\setminus T|\le3\delta M<3M<|G|.
+\]
+Choose $\beta\in G$ outside this union, and let $T_\beta$ be its fibre-closed agreement set with $c_\beta$.  Put
+\[
+  \widehat c_\beta
+  =
+  \ev_L(P_0+\beta P_1+\beta^2P_2+\beta^3P_3)\in C_0.
+\]
+On $T\cap T_\beta$, both $c_\beta$ and $\widehat c_\beta$ equal $w_0^{(\beta)}$.  Since
+\[
+  |T\cap T_\beta|
+  \ge(1-2\delta)M
+  \ge \rho M
+  =N,
+\]
+the two degree-$<N$ codewords are equal by \cref{prop:rs-parameters}(2).  If $\xi\in T_\beta$, then
+\[
+  d_\xi(\beta)
+  =w_0^{(\beta)}(\xi)-\widehat c_\beta(\xi)
+  =c_\beta(\xi)-\widehat c_\beta(\xi)
+  =0.
+\]
+Our choice of $\beta$ therefore forces $\xi\in T$.  Thus $T_\beta\subseteq T$.
+
+On the fibre-closed set $T_\beta$ of size at least $(1-\delta)M$, we have
+\[
+  w_U=\ev_L(P_0),
+  \qquad
+  w_K=\ev_L(P_1).
+\]
+By \cref{lem:hamming-fibre}, both fibre distances are at most $\delta$.  Taking $U=P_0$ and $K=P_1$ gives a witness in $\mathcal R^{\delta}_{\mathrm{CE}}$.
+\end{proof}
+
+\begin{remark}[Degree margin]
+\label{rem:generic-degree-margin}
+The only place where the Reed--Solomon rate enters the algebraic batching proof is \eqref{eq:generic-degree-margin}.  Since $N=\rho M$, it is enough that
+\[
+  2\rho<1-\delta.
+\]
+Under the unique-decoding choice $\delta\le(1-\rho)/2$, the worst case is satisfied whenever $3\rho<1$.  In particular, the standard choice $\rho\le1/4$ gives a strict margin.  Later protocols may impose additional Schwartz--Zippel terms, but they reuse the same degree margin.
+\end{remark}
+
+\begin{theorem}[Soundness of the generic coefficient-extraction protocol]
+\label{thm:generic-ce-soundness}
+Assume \eqref{eq:generic-degree-margin}.  If the instance $(w_U,w_K;v)$ has no witness in $\mathcal R^{\delta}_{\mathrm{CE}}$, then every prover is accepted by $\Pi_{\mathrm{CE}}$ with probability at most
+\begin{equation}
+  \varepsilon_{\mathrm{CE}}
+  \defeq
+  \frac{3M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:generic-ce-soundness}
+\end{equation}
+The same bound holds when sparse committed folding levels are used.
+\end{theorem}
+
+\begin{proof}
+Fix first a deterministic prover, hence a fixed first message $w_A$.  Let $G$ be the set in \cref{lem:generic-ce-batching}.  Since the instance has no witness, that lemma gives
+\[
+  |G|\le3M.
+\]
+Thus a uniform $\beta\in\F$ lies outside $G$ except with probability at most $3M/|\F|$.
+
+Fix $\beta\notin G$.  If
+\[
+  \Delta_{\mathrm{fib}}(w_0^{(\beta)},C_0)\le\delta,
+\]
+then the decoded codeword agrees with $w_0^{(\beta)}$ on a fibre-closed set of size at least $(1-\delta)M$, placing $\beta$ in $G$, a contradiction.  Hence
+\[
+  \Delta_{\mathrm{fib}}(w_0^{(\beta)},C_0)>\delta.
+\]
+By \cref{thm:folding-soundness}, conditioned on such a $\beta$ the folding test accepts with probability at most
+\[
+  \varepsilon_{\mathrm{fold}}+(1-\delta)^\kappa.
+\]
+Adding the probability $3M/|\F|$ of $\beta\in G$ proves \eqref{eq:generic-ce-soundness}.  The randomized-prover statement follows by conditioning on the prover's random tape.  The sparse-level case follows from \cref{prop:virtual-levels}.
+\end{proof}
+
+\subsection{Public kernels and omitted batch components}
+\label{sec:generic-public-kernels}
+
+The four-word batch is the universal form needed when both factors are committed.  If the second factor is public and known to be the evaluation of a degree-$<N$ polynomial, it need not be protected by correlated agreement.
+
+\begin{corollary}[Public-kernel specialization]
+\label{cor:public-kernel-specialization}
+Let $K\in\F[X]_{<N}$ be public and suppose the verifier can evaluate $K(\xi)$ at every queried $\xi\in L$.  Consider the protocol obtained from \cref{def:generic-ce-protocol} by replacing $w_K$ by the public word $\ev_L(K)$ and batching only
+\begin{equation}
+  w_U+\beta w_A+\beta^2h.
+  \label{eq:public-kernel-batch}
+\end{equation}
+Then, under the same degree-margin assumption, soundness error is at most
+\begin{equation}
+  \frac{2M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:public-kernel-soundness}
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+The proof of \cref{lem:generic-ce-batching} applies with the degree-$2$ curve generated by $(w_U,w_A,h)$ and the fixed polynomial $K$.  Correlated agreement therefore needs more than $2M$ good values of $\beta$ rather than $3M$.  The identity polynomial becomes
+\[
+  XP_0K-P_1-vX^N-X^{N+1}P_2,
+\]
+and the same root-counting argument proves the coefficient claim.  The remainder of the proof of \cref{thm:generic-ce-soundness} is unchanged.
+\end{proof}
+
+\begin{remark}[What the generic theorem buys us]
+\label{rem:generic-ce-roadmap}
+The rest of the paper no longer needs a new proximity argument for each algebraic application.  It only needs to exhibit the appropriate second factor $K$ and to show how its values are obtained:
+\begin{itemize}[leftmargin=*]
+  \item for multilinear evaluation, $K$ is the product-form evaluation kernel of \cref{thm:table-evaluation-extraction};
+  \item for a public linear functional, $K$ is the reversed generating polynomial of the public weight vector;
+  \item for an arbitrary committed inner product, $K$ is the reversal of the second committed table and is supplied virtually by \cref{def:virtual-reversal};
+  \item for Hadamard and later lookup/permutation arguments, coefficient extraction is combined with the DEEP quotient words of \cref{sec:deep-quotients}.
+\end{itemize}
+Thus the algebraic work of the later sections is separated cleanly from the Reed--Solomon proximity layer proved here.
+\end{remark}

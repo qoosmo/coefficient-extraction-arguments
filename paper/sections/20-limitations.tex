@@ -1,0 +1,280 @@
+\section{Limitations, Open Problems, and Research Agenda}
+\label{sec:limitations}
+
+The preceding sections establish a common coefficient-extraction framework for public linear functionals, committed inner products, pointwise Hadamard relations, logarithmic-derivative lookups and multiset checks, sparse matrix--vector multiplication, R1CS, and an offline memory-consistency relation.  The purpose of this section is to state precisely what these results do \emph{not} yet establish, and to isolate the mathematical and systems questions that determine whether the framework can become a competitive general-purpose proof architecture.
+
+The central distinction is between three layers:
+\begin{equation}
+  \boxed{
+  \begin{gathered}
+    \text{algebraic expressibility}
+    \quad\longrightarrow\quad
+    \text{interactive proof efficiency}
+    \\
+    \quad\longrightarrow\quad
+    \text{non-interactive cryptographic efficiency}.
+  \end{gathered}}
+  \label{eq:limitations-three-layers}
+\end{equation}
+The present manuscript resolves the first layer for the relations above and proves soundness and decoding knowledge for the resulting interactive protocols in the unique-decoding regime.  It also identifies a post-quantum QROM compilation route in \cref{sec:post-quantum}.  It does not yet establish that the complete construction is faster, smaller, zero knowledge, recursive, or optimal relative to mature Sumcheck-centered systems.
+
+\subsection{The unique-decoding restriction}
+\label{sec:limitations-unique-decoding}
+
+All correlated-agreement arguments in this paper use the unique-decoding form of the Reed--Solomon theorem quoted in \cref{thm:correlated-agreement}, with
+\[
+  0<\delta\le \delta_\star\defeq\frac{1-\rho}{2}.
+\]
+This restriction propagates to the generic coefficient-extraction argument, the heterogeneous batch, and every application built from them.  In particular, the final query term has the form
+\[
+  (1-\delta)^\kappa,
+\]
+and the maximal admissible $\delta$ is only half the relative minimum-distance bound $1-\rho$.
+
+At rate $\rho=1/4$, the largest unique-decoding radius is $\delta_\star=3/8$.  Thus obtaining a target query error $2^{-\lambda}$ requires
+\begin{equation}
+  \kappa
+  \ge
+  \left\lceil
+    \frac{\lambda}{-\log_2(1-\delta_\star)}
+  \right\rceil.
+  \label{eq:limitations-query-count}
+\end{equation}
+The large number of authenticated queries is therefore not intrinsic to coefficient extraction; it is a consequence of the decoding regime used by the current proof.
+
+\paragraph{Open problem 1: list-decoded heterogeneous batching.}
+The first mathematical priority is to replace the unique-decoding use of correlated agreement by a list-decoding statement, ideally up to a Johnson-type radius.  The desired theorem has the following form.  Let
+\[
+  W_\beta=\sum_{i=0}^{t}\beta^i u_i
+\]
+be the master batching curve.  If $W_\beta$ is close to the target RS code for sufficiently many $\beta$, then the words $u_i$ should admit a \emph{small common list} of low-degree explanations on a large agreement set.  The protocol soundness proof must then show that the algebraic identities and the decoded commitment words isolate one consistent member of this list.
+
+The obstruction is not the coefficient identity itself.  The identities in \cref{sec:coefficient-calculus} remain valid independently of the decoding radius.  The missing ingredient is a list-valued analogue of the common-agreement decoding state used in \cref{sec:heterogeneous-batching,sec:soundness}.  A successful theorem would reduce $\kappa$ without changing the algebraic front end.
+
+\subsection{Rate and degree budget}
+\label{sec:limitations-rate}
+
+The universal split identity
+\[
+  XU(X)K(X)=A(X)+vX^N+X^{N+1}H(X)
+\]
+uses polynomials $U,K,A,H$ of degree $<N$.  Consequently the defect polynomial used in the soundness proof has degree at most $2N$.  To conclude that it is identically zero from its vanishing on an agreement set, the present analysis requires enough evaluation points beyond this $2N$ degree budget.  This is one reason the manuscript uses a constant-rate RS code with substantial redundancy.
+
+\paragraph{Open problem 2: higher-rate coefficient extraction.}
+A stronger opening identity could lower the degree of the defect polynomial or split the product into several lower-degree pieces.  Either improvement would permit a higher code rate, potentially approaching $1/2$, while preserving the same selected coefficient.  A useful target is an identity whose soundness polynomial has degree $N+O(1)$ rather than $2N+O(1)$.
+
+This question is distinct from list decoding.  List decoding improves how much corruption the proximity proof tolerates; a higher-rate identity reduces the encoded domain size $M$ itself.  The two improvements are complementary.
+
+\subsection{Higher-degree sums and auxiliary tables}
+\label{sec:limitations-higher-degree}
+
+For a degree-two Boolean sum,
+\[
+  S=\sum_{w\in\B^n}a(w)b(w),
+\]
+coefficient extraction gives a direct one-product identity.  For higher pointwise degree, the present framework introduces auxiliary tables and proves their multiplication gates with Hadamard arguments.  For example,
+\[
+  \sum_w a(w)b(w)c(w)
+\]
+is handled by committing to $p=a\had b$ and then proving $\ip{p}{c}$.
+
+This reduction is general but may materialize many intermediate vectors.  If a pointwise arithmetic circuit has $g_\times$ multiplication gates, a direct vectorized realization creates up to $g_\times$ auxiliary degree-$<N$ tables before batching.
+
+\paragraph{Open problem 3: direct multilinear coefficient identities for higher arity.}
+One can express diagonal tensor contractions as selected coefficients of multivariate products, but naive Kronecker substitution can increase the univariate degree from $O(N)$ to $\Omega(N^2)$.  The open problem is to find a family of structured encodings for
+\[
+  \sum_w\prod_{j=1}^{d} f_j(w)
+\]
+that keeps both the degree and the number of committed auxiliary words linear in $N$ for fixed $d$, while retaining local verifier access compatible with an RS/FRI backend.  Such an identity could remove entire layers of Hadamard auxiliary tables.
+
+\subsection{Sparse matrix preprocessing}
+\label{sec:limitations-sparse-preprocessing}
+
+The sparse matrix protocol of \cref{sec:sparse-matvec} represents a public matrix by its nonzero-entry stream
+\[
+  (\mathsf{row}_e,\mathsf{col}_e,\mathsf{val}_e)_{e<K},
+  \qquad K=\operatorname{nnz}(M),
+\]
+and reduces matrix--vector multiplication to indexed selection, a Hadamard multiplication, and aggregation.  This preserves work proportional to the sparse representation rather than to $N^2$.
+
+The construction nevertheless assumes that the sparse entry representation and the public indexing data are available in a form that can be preprocessed consistently.  The theorem does not by itself optimize repeated proofs for the same matrix, nor does it establish the best commitment layout for very large static R1CS matrices.
+
+\paragraph{Open problem 4: direct sparse kernels.}
+For fixed public $M$, define the random row-compression vector
+\[
+  p_r(j)=\sum_i M_{ij}\eq(i,r).
+\]
+Then
+\[
+  \widetilde y(r)=\ip{p_r}{z}
+\]
+for $y=Mz$.  If $p_r$ had a succinct generating kernel that could be evaluated without materializing all $N$ coordinates, sparse matrix multiplication would reduce directly to the inner-product primitive.  The question is therefore whether common sparse constraint matrices admit structured factorizations, low-rank decompositions, or preprocessing data from which
+\[
+  K_{p_r}(X)=\sum_j p_r(j)X^{N-1-j}
+\]
+can be evaluated in $\operatorname{polylog}N$ or in time proportional only to the local sparsity touched by a verifier query.
+
+\subsection{Lookup and permutation costs}
+\label{sec:limitations-lookup}
+
+The lookup and permutation arguments of \cref{sec:lookup,sec:permutation} are algebraically compact: they replace grand products by logarithmic derivatives and then reduce the resulting equations to inverse Hadamard relations and linear functionals.  Their efficiency, however, depends on committed inverse tables such as
+\[
+  q_i=(\beta-f_i)^{-1}.
+\]
+Constructing these tables costs one inversion per coordinate naively, or one batched inversion plus linear additional arithmetic.  Moreover, each inverse table participates as another protected low-degree word in the heterogeneous batch.
+
+\paragraph{Open problem 5: fused inverse-table construction.}
+The implementation should determine whether several inverse tables can share denominator products, batch inversions, encoding passes, and Merkle leaves.  The relevant comparison is not only field-operation count but memory traffic and hashing.  A mathematical refinement would avoid explicit inverse tables altogether by proving a denominator-cleared rational identity with bounded degree and no poles; whether such a formulation preserves the simple one-batch soundness proof is open.
+
+\subsection{Proof size and authenticated-query cost}
+\label{sec:limitations-proof-size}
+
+The heterogeneous batch saves the low-degree test: once the master word is formed, the folding chain and final query phase are paid once.  It does \emph{not} make authentication paths free.  A query may still need values from several underlying committed words, and those values must be authenticated unless they can be derived virtually from already opened data.
+
+The proof size therefore depends on three independent quantities:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item the number $\kappa$ of query points;
+  \item the number of physically committed words whose values are required at each query;
+  \item the amount of Merkle-path sharing provided by the leaf layout, caps, and multiproofs.
+\end{enumerate}
+The theory of \cref{sec:heterogeneous-batching} controls the first algebraic combination but does not optimize the latter two representation choices.
+
+\paragraph{Open problem 6: commitment packing and shared authentication.}
+The implementation should place vectors that are commonly opened together in the same leaf and exploit multiproofs across common paths.  For R1CS and memory checking, this may be as important as reducing field multiplications.  A complete cost model should optimize the leaf arity, Merkle cap size, folding arity, and query count jointly.
+
+\subsection{Zero knowledge}
+\label{sec:limitations-zk}
+
+The present protocols are arguments of knowledge; they are not zero-knowledge protocols.  Table commitments and query openings may reveal witness-dependent field values.  The post-quantum compilation of \cref{sec:post-quantum} protects soundness and extraction in the QROM but does not provide witness privacy.
+
+\paragraph{Open problem 7: masking compatible with virtual relations.}
+A zero-knowledge transformation must preserve all identities that are evaluated locally by the verifier.  In particular, randomization of $V_a$ must interact correctly with reversal
+\[
+  V_a^*(X)=X^{N-1}V_a(X^{-1}),
+\]
+with DEEP quotient words, with Hadamard products, and with logarithmic-derivative inverse constraints.  Independent masks generally destroy multiplicative relations.  A useful construction should provide correlated masks whose induced error terms are either public, cancel algebraically, or are themselves included in the heterogeneous batch.
+
+For a full SNARK application, this is a necessary cryptographic layer rather than an optional optimization.
+
+\subsection{Concrete post-quantum security}
+\label{sec:limitations-pq-concrete}
+
+The QROM result of \cref{sec:post-quantum} derives security from the round-by-round decoding state and the compiler of Chiesa, Di, Hu, and Zheng~\cite{CDHZ25}.  The compiler is general, and its concrete extraction bound contains substantial losses in the adversary's number of quantum random-oracle queries.  Thus an interactive error near $2^{-128}$ does not automatically imply a $128$-bit bound for the compiled non-interactive argument.
+
+\paragraph{Open problem 8: parameter optimization for a target QROM level.}
+For a chosen quantum-query budget $Q$ and target extraction error $2^{-\lambda}$, one must optimize jointly
+\[
+  |\F|,\qquad \rho,\qquad \delta,\qquad \kappa,\qquad
+  \lambda_{\rm ch},\qquad \lambda_H,
+\]
+together with the number of protocol rounds and oracle positions read.  The objective should be a \emph{compiled} security target rather than an interactive-only target.  A list-decoding improvement would help here twice: by reducing $\kappa$ and by decreasing the round-by-round proximity error that is amplified by the compiler.
+
+\subsection{Domain and field restrictions}
+\label{sec:limitations-domain}
+
+Virtual reversal relies on
+\[
+  \xi\in L\Longrightarrow \xi^{-1}\in L,
+\]
+and the folding backend requires a smooth hierarchy of evaluation domains.  These conditions are natural for multiplicative-subgroup RS codes but are not available in every field or every code family.
+
+The framework is therefore not field agnostic in its present form.  This limitation is architectural rather than merely implementational: the local formula
+\[
+  w^*(\xi)=\xi^{N-1}w(\xi^{-1})
+\]
+would cease to be an oracle-local transformation if $\xi^{-1}$ left the committed domain.
+
+\paragraph{Open problem 9: coefficient extraction over other foldable domains.}
+Possible directions include additive domains, affine/circle domains, binary towers, or general foldable linear codes.  The invariant to preserve is not necessarily multiplicative inversion itself, but an efficiently computable domain automorphism that realizes coefficient reversal or the appropriate adjoint transformation locally on committed words.
+
+\subsection{Recursion and proof aggregation}
+\label{sec:limitations-recursion}
+
+Nothing in the current manuscript proves that the verifier can itself be represented cheaply inside the same constraint system.  A recursive implementation must arithmetize hashing, Merkle verification, extension-field operations, folding checks, and any DEEP inversions.  A protocol with an efficient native verifier may still be expensive recursively.
+
+\paragraph{Open problem 10: recursion-friendly instantiation.}
+The correct metric is the number and type of constraints needed to verify one proof inside a target field or VM.  This may favor a different hash, field tower, folding arity, or commitment packing than the native benchmark.  Recursive proof aggregation should therefore be treated as a separate parameter regime, not inferred from native verifier timings.
+
+\subsection{Memory model limitations}
+\label{sec:limitations-memory-model}
+
+The memory argument of \cref{sec:memory} is an \emph{offline} consistency proof: the complete access trace is available, a sorted copy is authenticated, and consistency is reduced to permutation, range/ordering checks, and local state-transition relations.  This model covers an important class of zkVM memory arguments but is not an online authenticated data structure.
+
+The current theorem also assumes bounded encodings for addresses and timestamps suitable for the range tables used in the lookup layer.  Very large address spaces, wraparound semantics, concurrency, atomic operations, or nondeterministic I/O require additional relations.
+
+\paragraph{Open problem 11: streaming and stateful memory.}
+A natural extension is an incremental version in which a commitment to memory state is carried between proof segments and only a bounded access batch is processed at once.  Such a construction would need a composable state commitment and a proof that segment boundaries preserve the same memory semantics as the global sorted-trace theorem.
+
+\subsection{Backend modularity}
+\label{sec:limitations-backend}
+
+Coefficient extraction produces ordinary low-degree RS relations before the proximity test.  The paper instantiates the backend with the FRI-style folding test analysed in \cref{sec:generic-protocol}, but the algebraic front end is conceptually separable from that choice.
+
+\paragraph{Open problem 12: stronger proximity backends.}
+It is natural to ask whether the same master low-degree word can be certified by a more query-efficient RS proximity system, including list-decoding-oriented constructions such as WHIR~\cite{WHIR24} or other constrained-code techniques.  A replacement backend must support the commitment/oracle interface and the round-by-round knowledge state needed by the non-interactive compiler.  If it does, improvements in proximity testing could be inherited without changing the coefficient-extraction reductions.
+
+\subsection{The principal empirical hypothesis}
+\label{sec:limitations-empirical}
+
+The paper's algebraic result does not imply an implementation speedup.  The empirical hypothesis is narrower:
+
+\begin{quote}
+When a workload simultaneously requires evaluations, inner products, multiplication constraints, lookups or permutations, and sparse linear relations, the cost of constructing relation-specific auxiliary words may be offset by fusing their encodings, commitments, and one shared low-degree proximity proof.
+\end{quote}
+
+The controlled benchmark plan of \cref{sec:complexity-benchmark-plan} must test this hypothesis by decomposing prover time into
+\[
+  \text{front-end arithmetic}
+  +\text{encoding}
+  +\text{hashing}
+  +\text{folding}
+  +\text{serialization},
+\]
+and by reporting peak memory, verifier time, and proof bytes separately.  Failure to beat a specialized Sumcheck implementation on one isolated primitive would not refute the architecture; conversely, a faster inner-product microbenchmark would not establish superiority on R1CS or memory checking.
+
+\subsection{A prioritized research program}
+\label{sec:limitations-roadmap}
+
+The remaining work can be ordered by dependency rather than by apparent novelty.
+
+\begin{enumerate}[label=\textbf{R\arabic*.},leftmargin=*]
+  \item \textbf{Proof audit and formalization.}
+  Formalize the algebraic reductions and the heterogeneous-batching soundness proof in Lean, preserving the theorem boundaries of this manuscript.  This is the prerequisite for treating the framework as a reusable proof-system layer rather than a collection of informal reductions.
+
+  \item \textbf{Reference implementation and controlled baselines.}
+  Implement one common RS/FRI backend and the IP, Hadamard, lookup, permutation, sparse-matrix, R1CS, and memory front ends.  Benchmark them against the tree-based Sumcheck baseline under identical field, hash, hardware, compiler, and security settings.
+
+  \item \textbf{List-decoding soundness.}
+  Generalize the batching theorem beyond unique decoding.  This is the highest-leverage mathematical improvement for proof size and verifier cost.
+
+  \item \textbf{Packed commitment engineering.}
+  Optimize leaf layout, Merkle multiproofs, NTT sharing, batching of inversions, and construction of the master word.  These optimizations determine whether heterogeneous batching is practically useful.
+
+  \item \textbf{Zero knowledge.}
+  Add a masking layer compatible with reversal, DEEP quotients, Hadamard products, and logarithmic derivatives, and prove simulation rather than only knowledge soundness.
+
+  \item \textbf{Compiled PQ parameters.}
+  Choose parameter sets from the QROM extraction bound rather than from interactive soundness alone, and publish executable scripts that reproduce every security number.
+
+  \item \textbf{Higher-rate and direct higher-degree identities.}
+  Explore improved split identities, structured multi-product kernels, and direct sparse kernels.  These are the directions most likely to change asymptotic or large-instance constants rather than only implementation overhead.
+
+  \item \textbf{Recursion and alternative backends.}
+  Study recursion-friendly hash/field choices and whether the same algebraic front end can profit from more query-efficient proximity tests.
+\end{enumerate}
+
+\subsection{Summary}
+\label{sec:limitations-summary}
+
+The framework developed in this paper establishes that a broad family of relations normally presented through Sumcheck can instead be expressed as coefficient, Hadamard, and logarithmic-derivative identities over one table-form Kronecker representation, and that these identities can be combined before one RS proximity proof.  The remaining questions are no longer primarily about expressibility.  They concern decoding radius, degree/rate tradeoffs, auxiliary-word cost, privacy, concrete QROM parameters, and implementation efficiency.
+
+The most important conceptual boundary is therefore:
+\begin{equation}
+  \boxed{
+  \begin{gathered}
+    \text{proved here: a common transparent algebraic/proximity architecture},\\
+    \text{not yet proved: that this architecture dominates optimized alternatives in practice.}
+  \end{gathered}}
+  \label{eq:limitations-final-boundary}
+\end{equation}
+The next section concludes by collecting the algebraic principle and the resulting proof-system architecture in its shortest form.

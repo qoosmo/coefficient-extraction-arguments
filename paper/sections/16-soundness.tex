@@ -1,0 +1,313 @@
+\section{Global Soundness and Decoding Knowledge}
+\label{sec:soundness}
+
+The preceding sections establish soundness separately for public linear functionals, committed inner products, Hadamard relations, lookup, multiset equality, sparse matrix--vector products, sparse R1CS, and memory consistency.  Every proof has the same shape.  First, relation-specific public challenges reduce the original statement to a heterogeneous batch of low-degree claims.  Second, one master batching challenge protects all low-degree component words simultaneously.  Third, one FRI-style folding chain certifies proximity of the master word to the Reed--Solomon code.  Finally, independent oracle queries test the accepting witness set.  This section isolates that common structure and gives a single composition theorem.
+
+The purpose is twofold.  First, it prevents the application sections from hiding soundness losses inside informal reductions: every source of error is assigned to one explicit layer.  Second, it identifies the decoding state that will be used in the non-interactive compilation developed in the next section.  The result below is still an interactive, information-theoretic statement; no random-oracle assumption is used in this section.
+
+\subsection{Committed relations and unique decoded states}
+\label{sec:global-decoded-state}
+
+Throughout this section assume
+\begin{equation}
+  0<\delta\le \frac{1-\rho}{2},
+  \qquad
+  2N<(1-\delta)M.
+  \label{eq:global-soundness-parameters}
+\end{equation}
+The first inequality is the unique-decoding regime used throughout the paper, and the second is the root-counting margin required by the coefficient-extraction and Hadamard identity arguments.
+
+Let $\mathbf w=(w_1,\ldots,w_t)$ be the tuple of \emph{original commitment words} of an application.  Auxiliary words sent after verifier challenges are not included in $\mathbf w$.  Each original word is intended to encode one table through \cref{def:table-commitment}.
+
+\begin{definition}[Partial table decoder]
+\label{def:partial-table-decoder}
+For a word $w\in\F^L$, define
+\[
+  \operatorname{Dec}_\delta(w)=
+  \begin{cases}
+    f,&\text{if there is }f:\bits\to\F\text{ with }
+    \Delta_{\mathrm{fib}}(w,\Enc_T(f))\le\delta,\\
+    \bot,&\text{otherwise.}
+  \end{cases}
+\]
+For a tuple $\mathbf w=(w_1,\ldots,w_t)$ put
+\[
+  \operatorname{Dec}_\delta(\mathbf w)
+  =
+  (\operatorname{Dec}_\delta(w_1),\ldots,\operatorname{Dec}_\delta(w_t)).
+\]
+\end{definition}
+
+\begin{lemma}[Well-definedness and efficient recovery]
+\label{lem:partial-decoder-well-defined}
+Under \eqref{eq:global-soundness-parameters}, $\operatorname{Dec}_\delta$ is well defined.  Whenever $\operatorname{Dec}_\delta(w)\ne\bot$, it can be recovered in time polynomial in $M$ by Reed--Solomon unique decoding followed by the inverse table-encoding bijection.
+\end{lemma}
+
+\begin{proof}
+Uniqueness is \cref{prop:unique-table-near-word}.  Since
+\[
+  \delta\le\frac{1-\rho}{2}
+  <\frac12\left(1-\frac{N-1}{M}\right),
+\]
+standard Reed--Solomon unique decoding recovers the unique degree-$<N$ polynomial whenever it exists \cite{WelchBerlekamp86,Gao03}.  The table is then its coefficient vector by \cref{prop:table-isomorphism}.
+\end{proof}
+
+Thus an original commitment tuple determines at most one decoded application state.  This point is fundamental: all later occurrences of one commitment in different subprotocols refer to the same decoded table.  Auxiliary messages may depend on verifier challenges, but they cannot change the decoded state of the original commitments.
+
+\subsection{Front-end reductions}
+\label{sec:front-end-reductions}
+
+We now formalize the part of an application that precedes the master heterogeneous batch.  This includes, for example, the logarithmic-derivative shift of a lookup, the tagging challenge of a prescribed permutation, the geometric fingerprint of a sparse matrix equation, and the tuple-compression and ordering challenges of the memory argument.
+
+Let $\mathcal R^\delta$ be a committed relation whose instances contain an original commitment tuple $\mathbf w$.  Let
+\[
+  \omega=(\omega_1,\ldots,\omega_r)
+\]
+be the sequence of public \emph{outer challenges}, drawn before the master batching challenge $\beta$.  The prover may send messages between these challenges.  Once the outer transcript is fixed, the application produces a heterogeneous batch instance $\mathfrak B_\omega$ in the sense of \cref{def:heterogeneous-batch-instance}.
+
+\begin{definition}[Sound front-end reduction]
+\label{def:sound-front-end-reduction}
+A front-end reduction from $\mathcal R^\delta$ to heterogeneous batching has error $\varepsilon_{\mathrm{red}}$ if the following hold for every deterministic prover and every fixed original commitment tuple $\mathbf w$.
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item \textbf{Completeness.} If $\mathbf w$ has a witness in $\mathcal R^\delta$, then the honest prover can choose the auxiliary messages so that, for every outer challenge outside the explicitly declared pole sets, $\mathfrak B_\omega$ has a joint witness.
+  \item \textbf{Witness lifting.} If $\mathbf w$ has no witness in $\mathcal R^\delta$, there is a set $\mathsf{Bad}_{\mathrm{red}}$ of outer transcripts such that
+  \begin{equation}
+    \Pr[\omega\in\mathsf{Bad}_{\mathrm{red}}]
+    \le \varepsilon_{\mathrm{red}},
+    \label{eq:front-end-bad-probability}
+  \end{equation}
+  and, for every $\omega\notin\mathsf{Bad}_{\mathrm{red}}$, the batch $\mathfrak B_\omega$ has no joint witness.
+\end{enumerate}
+\end{definition}
+
+The probability in \eqref{eq:front-end-bad-probability} is over the sequential verifier challenges, with the prover's message at each round fixed by the preceding transcript.  Therefore the bad set need not be a Cartesian product.  The sequential union bound of \cref{lem:sequential-bad-challenges} is exactly the tool used in the application sections.
+
+\begin{lemma}[Sequential root-event accounting]
+\label{lem:global-sequential-accounting}
+Suppose the outer challenges are drawn from finite sets $\Omega_1,\ldots,\Omega_r$.  Assume that, after every fixed prefix $(\omega_1,\ldots,\omega_{i-1})$, at most $b_i$ values of $\omega_i\in\Omega_i$ can cause the $i$-th reduction step to lose witness lifting.  Then the front-end reduction has
+\begin{equation}
+  \varepsilon_{\mathrm{red}}
+  \le
+  \sum_{i=1}^r\frac{b_i}{|\Omega_i|}.
+  \label{eq:global-sequential-reduction-error}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+For every $i$, let $E_i$ be the event that the first failure of witness lifting occurs at challenge $i$.  Once the preceding prefix is fixed, at most $b_i$ values of the next challenge belong to $E_i$.  Apply \cref{lem:sequential-bad-challenges} and sum the resulting conditional fractions.
+\end{proof}
+
+This lemma covers all algebraic outer errors appearing earlier in the paper: Schwartz--Zippel fingerprints, logarithmic-derivative roots, tuple-compression collisions, tagged-index collisions, and the linear adjacency fingerprint of the memory argument.
+
+\subsection{The master composition theorem}
+\label{sec:master-soundness-composition}
+
+For a heterogeneous batch $\mathfrak B$, let $s(\mathfrak B)$ be its number of distinct protected degree-$<N$ words after deduplication, as in \cref{def:protected-component-list}.  Let
+\[
+  h(\mathfrak B)
+  =
+  \begin{cases}
+    1,&\text{if }\mathfrak B\text{ contains at least one Hadamard claim},\\
+    0,&\text{otherwise.}
+  \end{cases}
+\]
+The single bit $h(\mathfrak B)$ is enough because all Hadamard relations in one batch share the same fingerprint pair $(\gamma,\theta)$.
+
+Define the backend error
+\begin{equation}
+  \varepsilon_{\mathrm{back}}(s,h)
+  \defeq
+  h\frac{2(N-1)}{|\F|}
+  +\frac{(s-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:global-backend-error}
+\end{equation}
+
+\begin{theorem}[Master interactive soundness theorem]
+\label{thm:master-interactive-soundness}
+Let $\mathcal R^\delta$ admit a sound front-end reduction with error $\varepsilon_{\mathrm{red}}$.  Suppose every resulting heterogeneous batch has at most $s$ protected words and Hadamard indicator at most $h\in\{0,1\}$.  Under \eqref{eq:global-soundness-parameters}, if an original commitment tuple $\mathbf w$ has no witness in $\mathcal R^\delta$, then every deterministic prover is accepted with probability at most
+\begin{equation}
+  \boxed{
+  \varepsilon_{\mathrm{tot}}
+  \le
+  \varepsilon_{\mathrm{red}}
+  +h\frac{2(N-1)}{|\F|}
+  +\frac{(s-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.}
+  \label{eq:master-total-soundness}
+\end{equation}
+The same bound holds for randomized provers whose internal randomness is independent of the verifier challenges.
+\end{theorem}
+
+\begin{proof}
+Let $E_{\mathrm{red}}$ be the event $\omega\in\mathsf{Bad}_{\mathrm{red}}$.  By \cref{def:sound-front-end-reduction},
+\[
+  \Pr[E_{\mathrm{red}}]\le\varepsilon_{\mathrm{red}}.
+\]
+Condition on any outer transcript outside $E_{\mathrm{red}}$.  Since the original relation is false, witness lifting implies that the resulting heterogeneous batch $\mathfrak B_\omega$ has no joint witness.  Apply \cref{thm:heterogeneous-soundness}.  Its conditional acceptance probability is at most
+\[
+  h(\mathfrak B_\omega)\frac{2(N-1)}{|\F|}
+  +\frac{(s(\mathfrak B_\omega)-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa,
+\]
+which is bounded by \eqref{eq:global-backend-error} with the uniform values $s,h$.  Adding $\Pr[E_{\mathrm{red}}]$ proves \eqref{eq:master-total-soundness}.
+
+For a randomized prover, condition on its internal random tape.  The deterministic argument applies to every fixed tape; averaging preserves the same bound.
+\end{proof}
+
+\begin{remark}[Where every error term comes from]
+\label{rem:global-error-provenance}
+The five summands of \eqref{eq:master-total-soundness} correspond to five logically distinct failures.
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item $\varepsilon_{\mathrm{red}}$: an outer algebraic reduction challenge hits a root/collision set.
+  \item $2(N-1)/|\F|$: the shared Hadamard fingerprint fails to detect at least one false pointwise product relation.
+  \item $(s-1)M/|\F|$: the master batching challenge lies in the correlated-agreement exceptional set.
+  \item $\varepsilon_{\mathrm{fold}}$: at least one FRI folding challenge is bad.
+  \item $(1-\delta)^\kappa$: every final query lands in the accepting witness set despite its density being $<1-\delta$.
+\end{enumerate}
+No other algebraic soundness loss is hidden in the theorem.
+\end{remark}
+
+\subsection{A single decoding extractor}
+\label{sec:global-decoding-extractor}
+
+The application sections state ``knowledge by decoding'' separately.  The following theorem gives the common reason.
+
+\begin{definition}[Application decoder]
+\label{def:application-decoder}
+For a committed relation $\mathcal R^\delta$ with original commitment tuple $\mathbf w=(w_1,\ldots,w_t)$, define
+\[
+  \operatorname{Ext}_{\mathcal R}(\mathbf w)
+  =
+  \begin{cases}
+    \operatorname{Dec}_\delta(\mathbf w),&\text{if every component decodes and the decoded tuple is a witness for }\mathcal R^\delta,\\
+    \bot,&\text{otherwise.}
+  \end{cases}
+\]
+The relation-specific deterministic reconstruction of public or auxiliary data (for example $Mz$ in a sparse matrix relation, or the sorted trace in memory consistency) is applied after decoding the original tables.
+\end{definition}
+
+\begin{theorem}[Global decoding knowledge]
+\label{thm:global-decoding-knowledge}
+Under the hypotheses of \cref{thm:master-interactive-soundness}, let $\varepsilon_{\mathrm{tot}}$ denote the right-hand side of \eqref{eq:master-total-soundness}.  If a prover is accepted with probability strictly larger than $\varepsilon_{\mathrm{tot}}$, then
+\[
+  \operatorname{Ext}_{\mathcal R}(\mathbf w)\ne\bot.
+\]
+In particular, the original commitments have unique decoded tables forming a witness for $\mathcal R^\delta$, and this witness is recoverable in polynomial time.
+\end{theorem}
+
+\begin{proof}
+If $\operatorname{Ext}_{\mathcal R}(\mathbf w)=\bot$, then by definition the original commitment tuple has no witness in $\mathcal R^\delta$.  The master soundness theorem would then bound the acceptance probability by $\varepsilon_{\mathrm{tot}}$, contradicting the hypothesis.  Polynomial-time extraction follows from \cref{lem:partial-decoder-well-defined} and the deterministic relation-specific reconstruction.
+\end{proof}
+
+\begin{remark}[What is and is not extracted]
+\label{rem:global-extractor-scope}
+The extractor is deliberately defined on the \emph{original} commitments.  Auxiliary inverse tables, DEEP quotient words, sparse-entry selections, sorted memory copies, and opening polynomials are proof messages rather than semantic witnesses.  Soundness shows that, outside the charged bad events, a successful low-degree explanation of those messages forces the uniquely decoded original tables to satisfy the intended application relation.  The extractor therefore need not reproduce the prover's auxiliary messages.
+\end{remark}
+
+\subsection{Challenge-by-challenge failure profile}
+\label{sec:global-round-profile}
+
+For later Fiat--Shamir compilation we need more than a final scalar soundness bound: we need to know at which public challenge a false execution can escape the no-witness state.  The previous proofs already provide such a decomposition.
+
+Fix a deterministic prover and a false original instance.  Call a transcript prefix \emph{doomed} when, after excluding all bad events already charged at earlier rounds, the current prefix cannot be extended to a joint witness for the intended decoded relation.  We use the following challenge classes.
+
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item \textbf{Outer algebraic challenges.}  At the $i$-th reduction challenge, at most $b_i$ values can move a doomed prefix into a prefix for which witness lifting is no longer guaranteed.
+  \item \textbf{Shared Hadamard fingerprint.}  If a decoded Hadamard relation is false, at most $2(N-1)$ pairs' worth of field probability are charged in total, as proved in \cref{lem:shared-hadamard-fingerprint}; all Hadamard claims share this one event.
+  \item \textbf{Master batching challenge.}  Once the heterogeneous batch has no joint witness, at most $(s-1)M$ values of $\beta$ can yield the large common agreement required by \cref{lem:master-correlated-agreement} and \cref{prop:heterogeneous-deterministic-recovery}.
+  \item \textbf{Folding challenges.}  At folding level $j$, at most $M_j$ values of $r_j$ are bad by \cref{lem:few-bad-folding-challenges}.
+  \item \textbf{Final queries.}  If all preceding challenges are good and the initial master word has no valid large agreement, the final accepting witness set has density $<1-\delta$ by \cref{prop:codeword-chain}.  Therefore $\kappa$ independent queries all accept with probability at most $(1-\delta)^\kappa$.
+\end{enumerate}
+
+This yields an explicit sequential profile rather than only a union bound.
+
+\begin{proposition}[Sequential knowledge-error profile]
+\label{prop:sequential-knowledge-profile}
+Assume the front-end reduction has conditional bad-set bounds $b_i/|\Omega_i|$ as in \cref{lem:global-sequential-accounting}.  For a false original instance, every accepting transcript belongs to the union of the following events:
+\begin{equation}
+\begin{aligned}
+  &E_{\mathrm{red},i}
+  &&(1\le i\le r),\\
+  &E_{\mathrm{Had}},\\
+  &E_{\beta},\\
+  &E_{\mathrm{fold},j}
+  &&(1\le j\le\ell),\\
+  &E_{\mathrm{query}},
+\end{aligned}
+\label{eq:global-failure-events}
+\end{equation}
+with conditional probability bounds
+\begin{equation}
+\begin{aligned}
+  \Pr[E_{\mathrm{red},i}\mid\text{previous prefix}]&\le \frac{b_i}{|\Omega_i|},\\
+  \Pr[E_{\mathrm{Had}}\mid\text{previous prefix}]&\le h\frac{2(N-1)}{|\F|},\\
+  \Pr[E_{\beta}\mid\text{previous prefix}]&\le \frac{(s-1)M}{|\F|},\\
+  \Pr[E_{\mathrm{fold},j}\mid\text{previous prefix}]&\le \frac{M_j}{|\F|},\\
+  \Pr[E_{\mathrm{query}}\mid\text{all previous challenges good}]&\le(1-\delta)^\kappa.
+\end{aligned}
+\label{eq:global-failure-profile}
+\end{equation}
+Consequently the sum of the first four families of conditional errors plus the final query error is exactly bounded by \eqref{eq:master-total-soundness}.
+\end{proposition}
+
+\begin{proof}
+The outer bounds are the hypothesis and \cref{lem:global-sequential-accounting}.  The shared Hadamard bound is \cref{lem:shared-hadamard-fingerprint}.  Outside the outer and Hadamard bad events, witness lifting says that the heterogeneous batch has no joint witness.  The proof of \cref{thm:heterogeneous-soundness} then shows that more than $(s-1)M$ master challenges with large common agreement would, by correlated agreement and deterministic recovery, produce a joint witness, a contradiction.  This gives the $E_\beta$ bound.
+
+Fix a master challenge outside $E_\beta$.  The initial master word has no fibre-closed agreement set of relative size $1-\delta$ with a codeword.  At each folding round, \cref{lem:few-bad-folding-challenges} excludes at most $M_j$ challenges.  If all folding challenges are good, the codeword-chain argument \cref{prop:codeword-chain} shows that the final witness-set density is strictly less than $1-\delta$; otherwise the chain would reconstruct a large initial agreement.  Finally \cref{lem:acceptance-witness-set,lem:independent-uniform-queries} gives the $(1-\delta)^\kappa$ query term.  The sum
+\[
+  \sum_{j=1}^{\ell}\frac{M_j}{|\F|}
+  =\varepsilon_{\mathrm{fold}}
+\]
+is \eqref{eq:epsilon-fold}, so summing the profile yields \eqref{eq:master-total-soundness}.
+\end{proof}
+
+\begin{corollary}[Round-indexed decoding state]
+\label{cor:round-indexed-decoding-state}
+For every application proved through the front-end/heterogeneous-batch framework, the unique decoding of the original commitments is a valid knowledge state for the interactive protocol: outside the sequential bad events of \cref{prop:sequential-knowledge-profile}, no public challenge can turn a false decoded state into an accepting transcript.  If an accepting transcript avoids all those events, the decoded original commitments form a witness for the application relation.
+\end{corollary}
+
+\begin{proof}
+The first statement is precisely the doomed-prefix implication in the proof of \cref{prop:sequential-knowledge-profile}.  If an accepting transcript avoids all listed events, the final-query event cannot occur either, so the assumption that the decoded state is false is impossible.  Hence the original commitments decode to a valid witness.
+\end{proof}
+
+The corollary is the form needed later: the semantic state is fixed by the original Reed--Solomon commitments, while each public challenge has an explicit bounded exceptional set.  No rewinding is used in the interactive extractor.
+
+\subsection{Instantiation for the protocols of this paper}
+\label{sec:global-instantiations}
+
+The application theorems are instances of \cref{thm:master-interactive-soundness}.  It is useful to record where their front-end error comes from.
+
+\begin{center}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.23\linewidth} >{\raggedright\arraybackslash}p{0.49\linewidth} >{\raggedright\arraybackslash}p{0.18\linewidth}}
+\toprule
+Relation & Front-end bad events before the heterogeneous backend & Backend contains Hadamard \\
+\midrule
+Public linear functional & none & no \\
+Committed inner product & none & no \\
+Hadamard & none beyond the shared Hadamard fingerprint & yes \\
+Lookup & logarithmic-derivative shift root & yes \\
+Multiset equality & logarithmic-derivative shift root & yes \\
+Tagged permutation & tag-compression collision plus multiset shift root & yes \\
+Sparse matrix--vector & geometric row fingerprint plus two indexed-selection tag/shift events & yes \\
+Sparse R1CS & shared matrix fingerprint plus indexed-selection events for one false matrix equation & yes \\
+Memory consistency & tuple compression, initial-memory tag, five logarithmic-derivative shifts, and the linear adjacency fingerprint & yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The exact application-specific bounds were proved in \cref{thm:lookup-soundness,thm:multiset-soundness,thm:tagged-permutation-soundness,thm:sparse-matvec-soundness,thm:r1cs-soundness,thm:memory-soundness}.  The point of the master theorem is not to replace those sharper calculations, but to show that all of them have one common soundness architecture.  In particular, once the relation-specific front end has ruled out a joint witness, \emph{every application pays the folding backend only once}.
+
+\subsection{Consequences for the architecture}
+\label{sec:global-soundness-consequences}
+
+The global theorem gives three structural conclusions.
+
+First, coefficient extraction is compositional.  A new relation does not require a new proximity proof: it requires only a reduction whose good outer transcripts lift every joint low-degree witness to a witness of the original relation.  Once that lemma is proved, \cref{thm:master-interactive-soundness} supplies the remaining master-batch, folding, and query terms.
+
+Second, the semantic extractor is uniform.  Evaluation, inner product, lookup, R1CS, and memory consistency all use the same operation on the original commitments: unique Reed--Solomon decoding followed by interpretation of the coefficient vector as a table.  The auxiliary proof words certify that this fixed decoded state satisfies increasingly expressive relations; they do not define a second semantic state.
+
+Third, the soundness proof is already organized by public-coin rounds.  Outer algebraic challenges, the shared Hadamard fingerprint, the master challenge, the FRI folding challenges, and the final queries each have their own bounded failure event.  This is the structure required to discuss Fiat--Shamir and post-quantum random-oracle compilation precisely.  We turn to that question next.

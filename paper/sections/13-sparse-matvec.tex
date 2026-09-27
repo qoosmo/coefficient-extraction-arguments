@@ -1,0 +1,530 @@
+\section{Sparse Matrix--Vector Products}
+\label{sec:sparse-matvec}
+
+Sparse matrix--vector multiplication is the remaining linear-algebra primitive needed to pass from the table relations of the preceding sections to R1CS.  In Spartan-type systems the matrices are public and sparse, while the vector is witness-dependent; the proof must therefore authenticate the products without expanding a sparse matrix into its dense $N\times N$ table~\cite{Setty20}.  A direct random compression already reduces $y=Mz$ to one weighted inner product, but evaluating the resulting matrix-dependent weight vector naively would still require the verifier to scan all nonzero entries.  This section gives a sparse-entry reduction that avoids that scan after preprocessing.
+
+The construction uses only primitives already proved in this paper.  A public sparse matrix is represented by a list of nonzero entries.  Two indexed lookups authenticate the column reads and the row weights, one Hadamard relation multiplies the fetched vector entries by the public matrix coefficients, and one committed inner product is compared with a public geometric linear functional of the claimed output.  All low-degree obligations enter the single heterogeneous folding test of \cref{sec:heterogeneous-batching}.
+
+\subsection{Ambient sparse representation}
+\label{sec:sparse-representation}
+
+The protocols of the preceding sections use tables of one common power-of-two length.  We therefore choose an ambient
+\begin{equation}
+  N=2^n
+  \label{eq:sparse-ambient-N}
+\end{equation}
+large enough to contain both the vector coordinates of interest and all sparse-entry slots.  A smaller vector or a shorter sparse list is padded to length $N$.  Dummy sparse slots have coefficient zero, so their row and column indices are irrelevant; for definiteness they may both be set to $0$.
+
+Let
+\begin{equation}
+  r,c:\B^n\longrightarrow\B^n,
+  \qquad
+  \mu:\B^n\longrightarrow\F
+  \label{eq:sparse-entry-tables}
+\end{equation}
+be public tables.  The slot $e\in\B^n$ represents an entry of value $\mu(e)$ in row $r(e)$ and column $c(e)$.  Repeated row--column pairs are allowed.  They define the matrix
+\begin{equation}
+  M_{i,j}
+  \defeq
+  \sum_{e\in\B^n:\,r(e)=i,\,c(e)=j}\mu(e),
+  \qquad i,j\in\B^n.
+  \label{eq:sparse-matrix-definition}
+\end{equation}
+Thus the padded zero slots contribute nothing, and combining duplicate entries is automatic.
+
+For a table $z:\B^n\to\F$, matrix--vector multiplication means
+\begin{equation}
+  (Mz)(i)
+  =
+  \sum_{j\in\B^n}M_{i,j}z(j)
+  =
+  \sum_{e:\,r(e)=i}\mu(e)z(c(e)).
+  \label{eq:sparse-matvec-coordinate}
+\end{equation}
+The second equality follows directly from \eqref{eq:sparse-matrix-definition} by exchanging the finite sums.
+
+\begin{definition}[Sparse matrix--vector relation]
+\label{def:sparse-matvec-relation}
+Fix $0<\delta\le(1-\rho)/2$.  For the public sparse metadata $(r,c,\mu)$, the relation $\mathcal R^{\delta}_{\mathrm{SMV}}[r,c,\mu]$ consists of pairs
+\[
+  ((w_z,w_y),(z,y))
+\]
+with $w_z,w_y\in\F^L$ and tables $z,y:\B^n\to\F$ satisfying
+\begin{equation}
+  \Delta_{\mathrm{fib}}(w_z,\Enc_T(z))\le\delta,
+  \qquad
+  \Delta_{\mathrm{fib}}(w_y,\Enc_T(y))\le\delta,
+  \label{eq:sparse-matvec-commitment-distances}
+\end{equation}
+and
+\begin{equation}
+  y(i)=\sum_{e:\,r(e)=i}\mu(e)z(c(e))
+  \qquad\text{for every }i\in\B^n.
+  \label{eq:sparse-matvec-relation}
+\end{equation}
+\end{definition}
+
+The public preprocessing associated with $(r,c,\mu)$ consists only of length-$N$ field-valued tables: the encodings of $\iota\circ r$, $\iota\circ c$, and $\mu$, together with the index table of \cref{sec:tagged-permutation} and the public multiplicity tables introduced below.  No dense $N^2$ matrix is formed.
+
+\subsection{Indexed selection from lookup}
+\label{sec:indexed-selection}
+
+The first task is to authenticate a table of selected coordinates.  Let
+\begin{equation}
+  a:\B^n\longrightarrow\B^n
+  \label{eq:index-map-a}
+\end{equation}
+be any public index map.  For a source table $z$ and a claimed selected table $u$, the indexed-selection relation is
+\begin{equation}
+  u(e)=z(a(e))
+  \qquad\text{for every }e\in\B^n.
+  \label{eq:indexed-selection-relation}
+\end{equation}
+Let $\iota:\B^n\to\F$ be the injective index embedding from \eqref{eq:index-embedding}; throughout this subsection assume
+\begin{equation}
+  p=\operatorname{char}(\F)>N.
+  \label{eq:sparse-index-characteristic}
+\end{equation}
+Define the public multiplicity table
+\begin{equation}
+  m_a(j)
+  \defeq
+  \sum_{e:\,a(e)=j}1_{\F}.
+  \label{eq:index-map-multiplicity}
+\end{equation}
+For a tagging challenge $\tau\in\F$, form
+\begin{align}
+  f_{a,u,\tau}(e)
+  &\defeq u(e)+\tau\iota(a(e)),
+  \label{eq:indexed-query-compression}\\
+  t_{z,\tau}(j)
+  &\defeq z(j)+\tau\iota(j).
+  \label{eq:indexed-table-compression}
+\end{align}
+The corresponding commitment words are virtual affine combinations:
+\begin{equation}
+  w_{f,\tau}=w_u+\tau w_{\iota\circ a},
+  \qquad
+  w_{t,\tau}=w_z+\tau w_{\iota},
+  \label{eq:indexed-virtual-compressions}
+\end{equation}
+where the two index words are public preprocessing data.
+
+\begin{lemma}[Correct indexed selection gives a lookup]
+\label{lem:indexed-selection-gives-lookup}
+If \eqref{eq:indexed-selection-relation} holds, then for every $\tau\in\F$ the triple
+\begin{equation}
+  \bigl(f_{a,u,\tau},t_{z,\tau},m_a\bigr)
+  \label{eq:indexed-selection-lookup-triple}
+\end{equation}
+satisfies the algebraic lookup relation of \cref{def:lookup-residue-multiplicities}.
+\end{lemma}
+
+\begin{proof}
+Fix $\lambda\in\F$.  Every query row $e$ contributes the compressed pair value
+\[
+  u(e)+\tau\iota(a(e))
+  =z(a(e))+\tau\iota(a(e)).
+\]
+For a fixed table row $j$, this value occurs once for every $e$ with $a(e)=j$, hence exactly with field-valued multiplicity $m_a(j)$.  Summing over all $j$ gives equality of the query multiplicity and the multiplicity-weighted table multiplicity at every $\lambda$, which is precisely \eqref{eq:algebraic-lookup-relation}.
+\end{proof}
+
+The converse can fail only if the random scalar compression collides two distinct index--value pairs.  The next statement is the indexed-lookup analogue of \cref{lem:tagged-compression}.
+
+\begin{lemma}[Soundness of indexed compression]
+\label{lem:indexed-selection-compression}
+Assume \eqref{eq:sparse-index-characteristic} and suppose \eqref{eq:indexed-selection-relation} is false.  Then there is a set $T_{a,u,z}\subseteq\F$ with
+\begin{equation}
+  |T_{a,u,z}|
+  \le\binom{2N}{2}
+  \label{eq:indexed-selection-collision-count}
+\end{equation}
+such that for every $\tau\notin T_{a,u,z}$, the triple \eqref{eq:indexed-selection-lookup-triple} does not satisfy the algebraic lookup relation.
+\end{lemma}
+
+\begin{proof}
+Consider the two tagged multisets
+\begin{align}
+  \mathcal A
+  &\defeq
+  \{\!\{(\iota(a(e)),u(e)):e\in\B^n\}\!\},
+  \label{eq:indexed-left-pairs}\\
+  \mathcal B
+  &\defeq
+  \biguplus_{j\in\B^n}
+  |a^{-1}(j)|\cdot\{\!\{(\iota(j),z(j))\}\!\}.
+  \label{eq:indexed-right-pairs}
+\end{align}
+Here the multiplicity on the right is interpreted as the ordinary integer number of preimages of $j$ under $a$; since $p>N$, its field image is exactly \eqref{eq:index-map-multiplicity}.
+
+If $\mathcal A=\mathcal B$, then for each $j$ the right multiset contains exactly $|a^{-1}(j)|$ copies of the unique pair $(\iota(j),z(j))$.  The left multiset contains exactly the same number of pairs whose first coordinate is $\iota(j)$, namely $(\iota(j),u(e))$ for $e\in a^{-1}(j)$.  Equality therefore forces $u(e)=z(j)$ for every such $e$, which is \eqref{eq:indexed-selection-relation}.  Hence $\mathcal A\ne\mathcal B$.
+
+The union of the supports of \eqref{eq:indexed-left-pairs} and \eqref{eq:indexed-right-pairs} contains at most $2N$ distinct pairs.  For two distinct pairs $(i,x)$ and $(j,y)$ in this union, the scalar compressions $x+\tau i$ and $y+\tau j$ can coincide for at most one $\tau$: there is no solution when $i=j$, and exactly one when $i\ne j$.  Let $T_{a,u,z}$ be the union of those collision values.  Then \eqref{eq:indexed-selection-collision-count} follows exactly as in \cref{lem:tagged-compression}.
+
+For $\tau\notin T_{a,u,z}$, scalar compression is injective on the union of the two supports.  If the compressed triple satisfied the algebraic lookup relation, the compressed query multiset would equal the multiplicity-weighted compressed table multiset.  Injectivity would imply $\mathcal A=\mathcal B$, a contradiction.
+\end{proof}
+
+\begin{remark}[Collision-free extension tagging]
+\label{rem:collision-free-index-tagging}
+The random tag is not essential.  If both coordinates of every indexed pair lie in a proper subfield $\F_0\subsetneq\F$ and one fixes $\vartheta\in\F\setminus\F_0$, then
+\[
+  (i,x)\longmapsto x+\vartheta i
+\]
+is injective on $\F_0^2$.  In that configuration the term \eqref{eq:indexed-selection-collision-count} disappears.  We retain random compression because it works over one field without adding a subfield hypothesis.
+\end{remark}
+
+For later use we spell out the exact primitive batch used by an indexed selection.  After a lookup shift $\zeta\in\F$, let $q,h:\B^n\to\F$ denote the claimed inverse tables
+\begin{equation}
+  q(e)=\frac{1}{\zeta-f_{a,u,\tau}(e)},
+  \qquad
+  h(j)=\frac{1}{\zeta-t_{z,\tau}(j)}.
+  \label{eq:indexed-selection-inverses}
+\end{equation}
+
+\begin{definition}[Indexed-selection sub-batch]
+\label{def:indexed-selection-sub-batch}
+Fix $a,\tau,\zeta$, commitment words $w_u,w_z,w_q,w_h$, and a scalar $S\in\F$.  The batch $\mathfrak B_{\mathrm{Sel}}[a]$ consists of:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item the Hadamard relation
+  \[
+    q\had(\zeta\mathbf1-f_{a,u,\tau})=\mathbf1;
+  \]
+  \item the Hadamard relation
+  \[
+    h\had(\zeta\mathbf1-t_{z,\tau})=\mathbf1;
+  \]
+  \item the public linear-functional claim
+  \[
+    \ip{q}{\mathbf1}=S;
+  \]
+  \item the public linear-functional claim
+  \[
+    \ip{h}{m_a}=S.
+  \]
+\end{enumerate}
+The compressed source words are the virtual words in \eqref{eq:indexed-virtual-compressions}, and $m_a$ is public.  Hence this is exactly the logarithmic-derivative lookup reduction of \cref{sec:lookup}, specialized so that its multiplicity table is public.
+\end{definition}
+
+Thus an indexed selection contributes two inverse Hadamard relations and two public linear-functional claims; the committed inner-product claim of the general lookup disappears because $m_a$ is public.
+
+\subsection{Geometric row fingerprint}
+\label{sec:sparse-row-fingerprint}
+
+Let $\alpha\in\F$.  Define the geometric table
+\begin{equation}
+  g_{\alpha}(i)
+  \defeq
+  \alpha^{\iota(i)},
+  \qquad i\in\B^n.
+  \label{eq:geometric-row-table}
+\end{equation}
+and its table polynomial
+\begin{equation}
+  G_{\alpha}(X)
+  \defeq
+  \sum_{j=0}^{N-1}\alpha^jX^j.
+  \label{eq:geometric-row-polynomial}
+\end{equation}
+For $\alpha X\ne1$,
+\begin{equation}
+  G_{\alpha}(X)
+  =\frac{1-(\alpha X)^N}{1-\alpha X},
+  \label{eq:geometric-series-formula}
+\end{equation}
+while $G_{\alpha}(X)=N\,1_{\F}$ when $\alpha X=1$.  Since the characteristic is odd and $N$ is a power of two, $N\,1_{\F}\ne0$.  Hence the public codeword $w_{g_\alpha}=\Enc_T(g_\alpha)$ and the reversed kernel used for the public linear functional $\ip{g_\alpha}{y}$ are evaluable at any verifier query point with $O(\log N)$ field operations by binary exponentiation.
+
+For a claimed sparse-entry row-weight table $s:\B^n\to\F$, the relation
+\begin{equation}
+  s(e)=\alpha^{\iota(r(e))}
+  =g_\alpha(r(e))
+  \label{eq:row-weight-selection}
+\end{equation}
+is exactly the indexed-selection relation of \eqref{eq:indexed-selection-relation} with source table $g_\alpha$ and public map $r$.  Therefore it is authenticated by $\mathfrak B_{\mathrm{Sel}}[r]$ without materializing a dense matrix.
+
+The final fingerprint identity is the following elementary fact.
+
+\begin{lemma}[Sparse contraction identity]
+\label{lem:sparse-contraction}
+Let $u,s,v:\B^n\to\F$ satisfy
+\begin{equation}
+  u(e)=z(c(e)),
+  \qquad
+  s(e)=\alpha^{\iota(r(e))},
+  \qquad
+  v(e)=\mu(e)u(e).
+  \label{eq:sparse-auxiliary-relations}
+\end{equation}
+Then
+\begin{equation}
+  \ip{s}{v}
+  =
+  \sum_{i\in\B^n}\alpha^{\iota(i)}(Mz)(i).
+  \label{eq:sparse-contraction-identity}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Using \eqref{eq:sparse-auxiliary-relations} and grouping sparse-entry slots by their public row index,
+\begin{align*}
+  \ip{s}{v}
+  &=\sum_{e\in\B^n}
+    \alpha^{\iota(r(e))}\mu(e)z(c(e))\\
+  &=\sum_{i\in\B^n}\alpha^{\iota(i)}
+    \sum_{e:\,r(e)=i}\mu(e)z(c(e))\\
+  &=\sum_{i\in\B^n}\alpha^{\iota(i)}(Mz)(i),
+\end{align*}
+where the last equality is \eqref{eq:sparse-matvec-coordinate}.
+\end{proof}
+
+\begin{lemma}[Geometric fingerprint detects a false product]
+\label{lem:sparse-geometric-fingerprint}
+Suppose $y\ne Mz$.  Define
+\begin{equation}
+  D_{M,z,y}(T)
+  \defeq
+  \sum_{i\in\B^n}
+  \bigl(y(i)-(Mz)(i)\bigr)T^{\iota(i)}.
+  \label{eq:sparse-error-polynomial}
+\end{equation}
+Then $D_{M,z,y}$ is a nonzero polynomial of degree at most $N-1$.  Consequently
+\begin{equation}
+  \left|
+    \left\{
+      \alpha\in\F:
+      \ip{g_\alpha}{y}
+      =\sum_i\alpha^{\iota(i)}(Mz)(i)
+    \right\}
+  \right|
+  \le N-1.
+  \label{eq:sparse-fingerprint-bad-alpha}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Because $y\ne Mz$, at least one coefficient of \eqref{eq:sparse-error-polynomial} is nonzero, so $D_{M,z,y}\ne0$.  Its largest possible exponent is $N-1$.  The equality in \eqref{eq:sparse-fingerprint-bad-alpha} is exactly $D_{M,z,y}(\alpha)=0$.  Apply the univariate root bound \cref{lem:root-bound}.
+\end{proof}
+
+\subsection{The sparse matrix--vector protocol}
+\label{sec:sparse-matvec-protocol}
+
+We can now state the complete reduction.  Besides the witness words $w_z,w_y$, the verification key contains public commitments to the length-$N$ sparse metadata and index-derived tables required below.  These are fixed once for a public matrix and can therefore be preprocessed.
+
+\begin{definition}[Sparse matrix--vector sub-batch]
+\label{def:sparse-matvec-sub-batch}
+Fix challenges $\alpha,\tau_c,\tau_r,\zeta_c,\zeta_r\in\F$ and prover words $w_u,w_s,w_v$ together with the inverse words and scalar messages required by the two indexed lookups.  The batch $\mathfrak B_{\mathrm{SMV}}$ contains:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item the indexed-selection sub-batch $\mathfrak B_{\mathrm{Sel}}[c]$ proving
+  \[
+    u(e)=z(c(e));
+  \]
+  \item the indexed-selection sub-batch $\mathfrak B_{\mathrm{Sel}}[r]$ proving
+  \[
+    s(e)=g_\alpha(r(e));
+  \]
+  \item the Hadamard claim
+  \begin{equation}
+    v=\mu\had u;
+    \label{eq:sparse-contribution-hadamard}
+  \end{equation}
+  \item a committed inner-product claim
+  \begin{equation}
+    \ip{s}{v}=S;
+    \label{eq:sparse-entry-inner-product}
+  \end{equation}
+  \item the public linear-functional claim
+  \begin{equation}
+    \ip{g_\alpha}{y}=S.
+    \label{eq:sparse-output-linear-functional}
+  \end{equation}
+\end{enumerate}
+Every primitive claim above is appended to one heterogeneous batch and is protected by one execution of $\Pi_{\mathrm{Het}}$.
+\end{definition}
+
+\begin{definition}[Sparse matrix--vector protocol $\Pi_{\mathrm{SMV}}$]
+\label{def:sparse-matvec-protocol}
+The instance is $(w_z,w_y)$ and the public sparse matrix metadata $(r,c,\mu)$.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The verifier samples
+  \begin{equation}
+    \alpha,\tau_c,\tau_r\leftarrow\F.
+    \label{eq:sparse-first-challenges}
+  \end{equation}
+  \item The prover sends commitment words $w_u,w_s,w_v$.  Honestly,
+  \begin{equation}
+    u(e)=z(c(e)),
+    \qquad
+    s(e)=\alpha^{\iota(r(e))},
+    \qquad
+    v(e)=\mu(e)u(e).
+    \label{eq:sparse-honest-auxiliaries}
+  \end{equation}
+  \item The verifier forms the virtual compressed lookup words for the column selection and row-weight selection using \eqref{eq:indexed-virtual-compressions}, with source tables $z$ and $g_\alpha$, respectively, and samples independent lookup shifts
+  \begin{equation}
+    \zeta_c,\zeta_r\leftarrow\F.
+    \label{eq:sparse-lookup-shifts}
+  \end{equation}
+  \item The prover sends the inverse words and scalar sum messages required by the two lookup sub-batches, and a scalar $S$.  Honestly,
+  \begin{equation}
+    S=\sum_{e\in\B^n}s(e)v(e).
+    \label{eq:sparse-honest-S}
+  \end{equation}
+  \item The parties execute a single
+  \begin{equation}
+    \Pi_{\mathrm{Het}}\bigl(\mathfrak B_{\mathrm{SMV}}\bigr).
+    \label{eq:sparse-run-one-batch}
+  \end{equation}
+\end{enumerate}
+\end{definition}
+
+\begin{theorem}[Sparse matrix--vector completeness]
+\label{thm:sparse-matvec-completeness}
+Suppose $(w_z,w_y)$ are honest commitments to tables satisfying $y=Mz$, and the prover follows \cref{def:sparse-matvec-protocol}.  Conditioned on the two lookup shifts and the shared Hadamard DEEP challenges avoiding their pole sets, the verifier accepts with probability $1$.
+\end{theorem}
+
+\begin{proof}
+The honest $u$ satisfies the column indexed-selection relation, so \cref{lem:indexed-selection-gives-lookup} makes its compressed lookup true for every $\tau_c$.  The honest $s$ satisfies \eqref{eq:row-weight-selection}, so the row-weight lookup is true for every $\tau_r$.  The relation \eqref{eq:sparse-contribution-hadamard} holds by definition of $v$.
+
+By \cref{lem:sparse-contraction},
+\[
+  \ip{s}{v}
+  =\sum_i\alpha^{\iota(i)}(Mz)(i)
+  =\sum_i\alpha^{\iota(i)}y(i)
+  =\ip{g_\alpha}{y},
+\]
+so the two scalar claims \eqref{eq:sparse-entry-inner-product} and \eqref{eq:sparse-output-linear-functional} hold with the same $S$.  Hence every primitive claim in \cref{def:sparse-matvec-sub-batch} has a joint honest witness.  Conditional perfect completeness follows from \cref{thm:heterogeneous-completeness} and the lookup completeness theorem \cref{thm:lookup-completeness}.
+\end{proof}
+
+\subsection{Soundness}
+\label{sec:sparse-matvec-soundness}
+
+Let $s_{\mathrm{SMV}}$ be the number of distinct protected low-degree words in the heterogeneous batch of \cref{def:sparse-matvec-sub-batch} after exact deduplication.  We leave it symbolic because public matrix words, the constant-one word, inverse tables, and repeated source words can be shared across the two indexed lookups and with surrounding constraints.
+
+For each indexed selection, define the outer bad-event bound
+\begin{equation}
+  \varepsilon_{\mathrm{Sel,out}}
+  \defeq
+  \frac{\binom{2N}{2}}{|\F|}
+  +\frac{2N-1}{|\F|}.
+  \label{eq:indexed-selection-outer-error}
+\end{equation}
+The first term is the tag-collision bound of \cref{lem:indexed-selection-compression}; the second is the bad logarithmic-derivative shift bound of \cref{lem:lookup-bad-challenges}.  As in \cref{rem:collision-free-index-tagging}, the first term can be removed by collision-free extension-field tagging.
+
+\begin{lemma}[A joint sparse sub-batch witness implies the compressed matrix identity]
+\label{lem:sparse-joint-witness}
+Fix the outer challenges $\alpha,\tau_c,\tau_r,\zeta_c,\zeta_r$.  Suppose the heterogeneous batch $\mathfrak B_{\mathrm{SMV}}$ has a joint witness, and suppose neither indexed compression challenge lies in its collision set and neither lookup shift lies in the corresponding bad-shift set.  Then the unique decoded tables $z,y$ satisfy
+\begin{equation}
+  \ip{g_\alpha}{y}
+  =
+  \sum_{i\in\B^n}\alpha^{\iota(i)}(Mz)(i).
+  \label{eq:sparse-joint-compressed-equality}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Because the column compression challenge is collision-free and its logarithmic-derivative shift is not bad, a joint witness for the first indexed-selection sub-batch implies the underlying indexed relation
+\[
+  u(e)=z(c(e))
+\]
+by \cref{lem:indexed-selection-compression,lem:lookup-joint-witness}.  The same argument for the row-weight lookup gives
+\[
+  s(e)=g_\alpha(r(e))=\alpha^{\iota(r(e))}.
+\]
+The Hadamard subclaim in the same joint witness gives $v=\mu\had u$.  The committed inner-product and public linear-functional claims share the scalar $S$, hence
+\[
+  \ip{s}{v}=S=\ip{g_\alpha}{y}.
+\]
+Apply \cref{lem:sparse-contraction} to the three decoded auxiliary relations to obtain \eqref{eq:sparse-joint-compressed-equality}.
+\end{proof}
+
+\begin{theorem}[Sparse matrix--vector soundness]
+\label{thm:sparse-matvec-soundness}
+Assume
+\begin{equation}
+  p>N,
+  \qquad
+  0<\delta\le\frac{1-\rho}{2},
+  \qquad
+  2N<(1-\delta)M.
+  \label{eq:sparse-matvec-parameters}
+\end{equation}
+If the instance $(w_z,w_y)$ has no witness in $\mathcal R^{\delta}_{\mathrm{SMV}}[r,c,\mu]$, then every deterministic prover is accepted by $\Pi_{\mathrm{SMV}}$ with probability at most
+\begin{equation}
+\begin{split}
+  \varepsilon_{\mathrm{SMV}}
+  \le{}&
+  \frac{N-1}{|\F|}
+  +2\varepsilon_{\mathrm{Sel,out}}
+  +\frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{SMV}}-1)M}{|\F|}
+  \\
+  &+\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\end{split}
+\label{eq:sparse-matvec-soundness-bound}
+\end{equation}
+The same bound holds for randomized provers by averaging.  With collision-free extension tagging, delete the two $\binom{2N}{2}/|\F|$ terms contained in $2\varepsilon_{\mathrm{Sel,out}}$.
+\end{theorem}
+
+\begin{proof}
+By \cref{prop:unique-table-near-word}, each of $w_z,w_y$ has at most one table within fibre distance $\delta$.  If one of them has none, the heterogeneous batch cannot have a compatible joint witness.  Indeed, a decoded compressed source word in either indexed lookup would, after subtracting its public affine tag, give a decoding of $w_z$ at the same fibre distance; similarly the public-linear-functional subclaim on $y$ requires a decoding of $w_y$.  Therefore \cref{thm:heterogeneous-soundness} applies directly, giving the shared Hadamard fingerprint term and the final batching/folding/query terms in \eqref{eq:sparse-matvec-soundness-bound}.
+
+Otherwise let $z,y$ be the unique decoded tables.  Since the sparse matrix--vector relation is false, $y\ne Mz$.  By \cref{lem:sparse-geometric-fingerprint}, at most $N-1$ values of $\alpha$ satisfy the compressed equality \eqref{eq:sparse-joint-compressed-equality}.  This contributes the first term of \eqref{eq:sparse-matvec-soundness-bound}.
+
+Fix an $\alpha$ outside that root set.  For each of the two indexed selections, \cref{lem:indexed-selection-compression} excludes all but at most $\binom{2N}{2}$ tagging challenges from faithfully representing the underlying indexed relation.  Conditional on a faithful tag, \cref{lem:lookup-bad-challenges} excludes all but at most $2N-1$ lookup shifts from detecting a false compressed lookup.  The union bound over the column and row indexed selections therefore contributes at most $2\varepsilon_{\mathrm{Sel,out}}$.
+
+Outside all these outer bad events, \cref{lem:sparse-joint-witness} shows that the heterogeneous batch cannot have a joint witness, because such a witness would imply \eqref{eq:sparse-joint-compressed-equality}, contradicting the chosen $\alpha$.  Apply \cref{thm:heterogeneous-soundness}.  The batch contains Hadamard claims, so its remaining error is
+\[
+  \frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{SMV}}-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\]
+Adding the outer bad-event probabilities gives \eqref{eq:sparse-matvec-soundness-bound}.  Randomized provers follow by conditioning on their internal randomness and averaging.
+\end{proof}
+
+\begin{corollary}[Sparse matrix--vector knowledge by decoding]
+\label{cor:sparse-matvec-knowledge}
+Under the hypotheses of \cref{thm:sparse-matvec-soundness}, acceptance with probability larger than the right-hand side of \eqref{eq:sparse-matvec-soundness-bound} implies that the unique decodings of $w_z,w_y$ exist and satisfy $y=Mz$.  They are recoverable in polynomial time by Reed--Solomon unique decoding.
+\end{corollary}
+
+\begin{proof}
+This is the contrapositive of \cref{thm:sparse-matvec-soundness}, together with uniqueness from \cref{prop:unique-table-near-word} and the standard decoding algorithms cited in \cref{cor:lookup-knowledge}.
+\end{proof}
+
+\subsection{Cost and consequence}
+\label{sec:sparse-matvec-cost}
+
+The reduction has a simple algebraic decomposition:
+\begin{equation}
+\begin{aligned}
+  \text{sparse }y=Mz
+  ={}&2\text{ indexed selections}\\
+     &+1\text{ Hadamard relation}\\
+     &+1\text{ committed inner product}\\
+     &+1\text{ public geometric linear functional}.
+\end{aligned}
+\label{eq:sparse-matvec-decomposition}
+\end{equation}
+Each indexed selection is itself two inverse Hadamard relations plus two public linear functionals.  Hence, after expanding the selections, the sparse matrix--vector relation contributes five Hadamard claims, five public linear-functional claims, and one committed inner-product claim to the master batch.  They share one folding chain and one final query test.
+
+The public matrix is stored by $O(N)$ sparse-entry metadata rather than $N^2$ dense entries.  If the original matrix has $K$ nonzero entries and vector dimension $d$, choose the ambient power of two
+\begin{equation}
+  N=2^{\lceil\log_2\max\{K,d\}\rceil}
+  \label{eq:sparse-ambient-choice}
+\end{equation}
+and pad the remaining slots.  Public preprocessing therefore scales with the sparse representation.  The online prover constructs $u,s,v$ in $O(N)$ field operations apart from the Reed--Solomon encoding and the common folding backend.  At verification time the row/column maps, coefficient table, index words, and multiplicity tables are fixed preprocessing data; their Merkle roots can be included in a circuit-specific verification key, so the verifier does not scan the sparse list online.
+
+\begin{remark}[Direct compression without preprocessing]
+\label{rem:direct-sparse-compression}
+There is a shorter but non-succinct reduction.  For a random multilinear point $r_0\in\F^n$, define
+\[
+  p_{r_0}(j)=\sum_i M_{i,j}\eq(i,r_0).
+\]
+Then
+\[
+  \widetilde y(r_0)=\ip{p_{r_0}}{z}
+\]
+is a public linear-functional claim, and a false matrix product is detected by a random multilinear evaluation.  However computing the full public kernel $p_{r_0}$ online requires scanning the sparse matrix.  The indexed-selection construction above trades this online scan for public sparse preprocessing and relations already native to the coefficient-extraction framework.
+\end{remark}
+
+The main consequence is that generic public sparse matrix--vector multiplication no longer requires an independent Sumcheck layer.  Its witness-dependent algebra has been reduced to the same lookup, Hadamard, inner-product, and public-kernel relations already handled by the Reed--Solomon/FRI backend.  The next section applies this result three times to the sparse R1CS matrices and combines the outputs with one additional Hadamard relation.

@@ -1,0 +1,620 @@
+\section{Preliminaries and Notation}
+\label{sec:preliminaries}
+
+This section fixes the algebraic and coding-theoretic notation used throughout the paper.  We keep the multilinear-polynomial conventions of~\cite{MkhidaIguider26}: $\Fq$ is a finite field, $n$ is the number of variables, $N=2^n$, $\M$ is the vector space of multilinear polynomials, and $m_j$ denotes the canonical monomial indexed by the binary expansion of $j$.  We additionally distinguish a challenge field $\F\supseteq\Fq$, introduce the smooth multiplicative domains used by the Reed--Solomon backend, and state the one external coding-theoretic theorem used later in the soundness analysis.
+
+Unless explicitly stated otherwise, all polynomial equalities are identities in the indicated polynomial ring, all vector spaces are over the indicated field, and all finite probabilities are taken with respect to the uniform distribution.
+
+\subsection{Integers, bits, and indexing}
+\label{sec:preliminaries-bits}
+
+For integers $a\le b$ we write
+\[
+  [a,b]\defeq\{a,a+1,\ldots,b\}.
+\]
+If $a>b$, then $[a,b]=\varnothing$.  Let $n\in\N$ with $n\ge1$, and put
+\[
+  N\defeq 2^n.
+\]
+Every $j\in[0,N-1]$ has a unique binary expansion
+\begin{equation}
+  j=\sum_{i=1}^{n} j_i2^{i-1},
+  \qquad j_i\in\{0,1\}.
+  \label{eq:binary-expansion}
+\end{equation}
+As in~\cite{MkhidaIguider26}, the least significant bit is $j_1$.  We identify $j$ with its bit vector
+\[
+  (j_1,\ldots,j_n)\in\B^n
+\]
+whenever no confusion can arise.  Conversely, for $w=(w_1,\ldots,w_n)\in\B^n$ we use the same symbol $w$ for the integer $\sum_iw_i2^{i-1}$.
+
+For $j\in[0,N-1]$, define its Hamming weight by
+\[
+  \wt(j)\defeq\sum_{i=1}^{n}j_i,
+\]
+and its bitwise complement by
+\[
+  \bar j\defeq (N-1)-j.
+\]
+For $a,b\in[0,N-1]$, write $a\preceq b$ if $a_i\le b_i$ for every $i\in[1,n]$.
+
+\begin{lemma}[Complement bits]
+\label{lem:complement-bits}
+For $j\in[0,N-1]$, the binary digits of $\bar j$ are $1-j_i$ for $i\in[1,n]$.
+\end{lemma}
+
+\begin{proof}
+Since
+\[
+  N-1=\sum_{i=1}^{n}2^{i-1},
+\]
+we have
+\[
+  \bar j=(N-1)-j
+  =\sum_{i=1}^{n}(1-j_i)2^{i-1}.
+\]
+Each coefficient $1-j_i$ lies in $\{0,1\}$, so uniqueness of binary expansion gives the claim.
+\end{proof}
+
+\subsection{Finite fields and univariate polynomials}
+\label{sec:preliminaries-fields}
+
+Let $\Fq$ be a finite field of odd characteristic $p$, with $q=p^e$ for some integer $e\ge1$.  Let $\F\supseteq\Fq$ be a finite extension field.  We call $\Fq$ the \emph{base field} and $\F$ the \emph{challenge field}.  The extension is allowed to be trivial.  The odd-characteristic assumption ensures that $2$ is invertible, which is needed by the even--odd decomposition used by the folding backend.
+
+For a field $K$, write $K[X]$ for the univariate polynomial ring over $K$ and
+\[
+  K[X]_{<d}\defeq\{P\in K[X]:\deg P<d\}
+\]
+for $d\in\N$.  We use the convention $\deg0=-\infty$.  For $P\in K[X]$ and $r\in\N$, the notation
+\[
+  [X^r]P
+\]
+denotes the coefficient of $X^r$ in $P$.
+
+\begin{lemma}[Root bound]
+\label{lem:root-bound}
+Let $K$ be a field and let $P\in K[X]$ be nonzero of degree $d\ge0$.  Then $P$ has at most $d$ roots in $K$.  Consequently, if $P,Q\in K[X]_{<d}$ agree at $d$ distinct points of $K$, then $P=Q$.
+\end{lemma}
+
+\begin{proof}
+We prove the first statement by induction on $d$.  If $d=0$, then $P$ is a nonzero constant and has no root.  Suppose $d\ge1$ and $a\in K$ is a root.  Euclidean division by $X-a$ gives
+\[
+  P=(X-a)R
+\]
+with $\deg R=d-1$.  Every root of $P$ other than $a$ is a root of $R$, because $K$ has no zero divisors.  By induction, $R$ has at most $d-1$ roots, so $P$ has at most $d$ roots.
+
+For the second statement, $P-Q$ has degree $<d$.  If it vanishes at $d$ distinct points, the first statement forces $P-Q=0$.
+\end{proof}
+
+\begin{lemma}[Even--odd polynomial decomposition]
+\label{lem:evenodd-polynomial}
+Let $K$ be a field and $d\ge1$.  Every $P\in K[X]_{<2d}$ admits a unique decomposition
+\begin{equation}
+  P(X)=P_{\mathrm e}(X^2)+XP_{\mathrm o}(X^2),
+  \qquad
+  P_{\mathrm e},P_{\mathrm o}\in K[X]_{<d}.
+  \label{eq:evenodd-polynomial}
+\end{equation}
+Explicitly,
+\[
+  [X^r]P_{\mathrm e}=[X^{2r}]P,
+  \qquad
+  [X^r]P_{\mathrm o}=[X^{2r+1}]P
+\]
+for $r\in[0,d-1]$.  The map $P\mapsto(P_{\mathrm e},P_{\mathrm o})$ is $K$-linear.
+\end{lemma}
+
+\begin{proof}
+Every monomial $X^s$ with $0\le s<2d$ occurs exactly once on the right-hand side of~\eqref{eq:evenodd-polynomial}: if $s=2r$ it occurs in $P_{\mathrm e}(X^2)$, and if $s=2r+1$ it occurs in $XP_{\mathrm o}(X^2)$.  Comparing coefficients gives existence, the displayed formulas, and uniqueness.  Linearity follows coefficientwise.
+\end{proof}
+
+\subsection{Multilinear polynomials}
+\label{sec:preliminaries-multilinear}
+
+Let
+\[
+  A\defeq\Fq[x_1,\ldots,x_n]
+\]
+be the polynomial ring in $n$ indeterminates over $\Fq$.  Following~\cite{MkhidaIguider26}, let $\M\subseteq A$ be the set of multilinear polynomials:
+\[
+  \M\defeq
+  \{f\in A:\deg_{x_i}(f)\le1\text{ for every }i\in[1,n]\}.
+\]
+It is an $\Fq$-vector space.
+
+For $j\in[0,N-1]$ with binary expansion~\eqref{eq:binary-expansion}, define
+\begin{equation}
+  m_j\defeq\prod_{i=1}^{n}x_i^{j_i}.
+  \label{eq:canonical-monomial}
+\end{equation}
+Thus $m_0=1$, $m_1=x_1$, $m_2=x_2$, $m_3=x_1x_2$, and
+\[
+  \deg m_j=\wt(j).
+\]
+
+\begin{proposition}[Canonical basis]
+\label{prop:canonical-basis}
+The family
+\[
+  m=(m_j)_{0\le j\le N-1}
+\]
+is a basis of the $\Fq$-vector space $\M$.  In particular, $\dim_{\Fq}\M=N$ and every $f\in\M$ has a unique expansion
+\begin{equation}
+  f=\sum_{j=0}^{N-1}\alpha_jm_j,
+  \qquad \alpha_j\in\Fq.
+  \label{eq:canonical-expansion}
+\end{equation}
+We call $(\alpha_0,\ldots,\alpha_{N-1})$ the \emph{canonical coordinate vector} of $f$.
+\end{proposition}
+
+\begin{proof}
+The monomials of the full polynomial ring $A$ form an $\Fq$-basis of $A$.  A monomial lies in $\M$ exactly when each exponent is either $0$ or $1$.  Such exponent vectors are precisely the bit vectors $(j_1,\ldots,j_n)\in\B^n$, hence precisely the monomials~\eqref{eq:canonical-monomial}.  Therefore the $m_j$ span $\M$ and are linearly independent.  There are $2^n=N$ of them.
+\end{proof}
+
+The table representation of a multilinear polynomial is its restriction to the Boolean hypercube.
+
+\begin{definition}[Table form]
+\label{def:table-form}
+For $f\in\M$, its \emph{table form} is the vector
+\[
+  \bigl(f(w)\bigr)_{w\in\B^n}\in\Fq^N,
+\]
+indexed by the integer identification of $w\in\B^n$ from~\cref{sec:preliminaries-bits}.
+\end{definition}
+
+To extend a table from the Boolean cube to arbitrary field points, define for $w\in\B^n$ and $z=(z_1,\ldots,z_n)\in\F^n$ the equality polynomial
+\begin{equation}
+  \eq(w,z)
+  \defeq
+  \prod_{i=1}^{n}\bigl((1-w_i)(1-z_i)+w_iz_i\bigr).
+  \label{eq:equality-polynomial}
+\end{equation}
+Equivalently, the $i$th factor is $1-z_i$ when $w_i=0$ and $z_i$ when $w_i=1$.
+
+\begin{lemma}[Boolean delta property]
+\label{lem:eq-delta}
+For $u,w\in\B^n$,
+\[
+  \eq(w,u)=
+  \begin{cases}
+    1,&w=u,\\
+    0,&w\ne u.
+  \end{cases}
+\]
+\end{lemma}
+
+\begin{proof}
+If $w=u$, then for every coordinate $i$ the $i$th factor in~\eqref{eq:equality-polynomial} equals $1$.  If $w\ne u$, choose $i$ with $w_i\ne u_i$.  If $(w_i,u_i)=(0,1)$ the factor is $1-u_i=0$, while if $(w_i,u_i)=(1,0)$ the factor is $u_i=0$.  Hence the whole product vanishes.
+\end{proof}
+
+\begin{definition}[Multilinear extension]
+\label{def:mle}
+For a table $t:\B^n\to\F$, its \emph{multilinear extension} is
+\begin{equation}
+  \widetilde t(z)
+  \defeq
+  \sum_{w\in\B^n}t(w)\eq(w,z),
+  \qquad z\in\F^n.
+  \label{eq:mle-definition}
+\end{equation}
+\end{definition}
+
+\begin{proposition}[Interpolation on the Boolean cube]
+\label{prop:boolean-interpolation}
+For every table $t:\B^n\to\F$, the polynomial $\widetilde t$ defined by~\eqref{eq:mle-definition} is multilinear and satisfies
+\[
+  \widetilde t(u)=t(u)
+  \qquad\text{for every }u\in\B^n.
+\]
+Moreover, it is the unique multilinear polynomial over $\F$ with these Boolean values.
+\end{proposition}
+
+\begin{proof}
+Each factor in~\eqref{eq:equality-polynomial} has degree at most $1$ in its corresponding variable and is independent of the other variables; hence $\eq(w,z)$ is multilinear in $z$, and so is the sum~\eqref{eq:mle-definition}.  For $u\in\B^n$, \cref{lem:eq-delta} gives
+\[
+  \widetilde t(u)
+  =\sum_{w\in\B^n}t(w)\eq(w,u)
+  =t(u).
+\]
+For uniqueness, let $g$ be multilinear and vanish on all of $\B^n$.  We prove $g=0$ by induction on $n$.  For $n=1$, write $g=a+bx_1$; the equalities $g(0)=g(1)=0$ imply $a=b=0$.  For $n>1$, write uniquely
+\[
+  g=g_0+x_ng_1
+\]
+with $g_0,g_1$ multilinear in $x_1,\ldots,x_{n-1}$.  Evaluating at $x_n=0$ shows that $g_0$ vanishes on $\B^{n-1}$, hence $g_0=0$ by induction.  Evaluating at $x_n=1$ then shows that $g_1$ vanishes on $\B^{n-1}$, hence $g_1=0$.  Thus $g=0$.
+\end{proof}
+
+The following relation between canonical coordinates and the Boolean table will occasionally be useful.
+
+\begin{lemma}[Canonical coordinates and table values]
+\label{lem:mobius}
+Let $f\in\M$ have canonical expansion~\eqref{eq:canonical-expansion}.  For $b\in[0,N-1]$,
+\begin{equation}
+  f(b)=\sum_{j\preceq b}\alpha_j.
+  \label{eq:zeta-transform}
+\end{equation}
+Conversely, for $j\in[0,N-1]$,
+\begin{equation}
+  \alpha_j
+  =\sum_{c\preceq j}(-1)^{\wt(j)-\wt(c)}f(c).
+  \label{eq:mobius-transform}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+For Boolean $b$, the value
+\[
+  m_j(b)=\prod_{i:j_i=1}b_i
+\]
+equals $1$ exactly when $j_i\le b_i$ for all $i$, that is, when $j\preceq b$, and equals $0$ otherwise.  Evaluating~\eqref{eq:canonical-expansion} gives~\eqref{eq:zeta-transform}.
+
+For~\eqref{eq:mobius-transform}, substitute~\eqref{eq:zeta-transform} into its right-hand side:
+\[
+  \sum_{c\preceq j}(-1)^{\wt(j)-\wt(c)}
+  \sum_{d\preceq c}\alpha_d
+  =
+  \sum_{d\preceq j}\alpha_d
+  \sum_{d\preceq c\preceq j}
+  (-1)^{\wt(j)-\wt(c)}.
+\]
+For fixed $d\preceq j$, the inner sum ranges over all subsets of the coordinates where $j_i=1$ and $d_i=0$.  If there are $r=\wt(j)-\wt(d)$ such coordinates, the sum is
+\[
+  \sum_{s=0}^{r}\binom{r}{s}(-1)^{r-s}=(1-1)^r,
+\]
+which is $1$ when $d=j$ and $0$ otherwise.  Therefore only the term $\alpha_j$ remains.
+\end{proof}
+
+\subsection{Smooth multiplicative domains}
+\label{sec:preliminaries-domains}
+
+The Reed--Solomon and folding layers use multiplicative subgroups of power-of-two order.
+
+\begin{definition}[Smooth domain]
+\label{def:smooth-domain}
+A \emph{smooth domain} is a multiplicative subgroup
+\[
+  L\le\Fq^\times
+\]
+of order
+\[
+  M=2^\mu
+\]
+for some $\mu\in\N$.  For $r\in[0,\mu]$, define
+\[
+  L^{2^r}\defeq\{\xi^{2^r}:\xi\in L\}.
+\]
+The notation denotes the image under the power map, not a Cartesian power.
+\end{definition}
+
+We use the standard fact that the multiplicative group of a finite field is cyclic~\cite{LidlNiederreiter97}.  From it we derive every structural property of smooth domains needed below.
+
+\begin{lemma}[Power maps on smooth domains]
+\label{lem:power-maps}
+Let $L\le\Fq^\times$ be a smooth domain of order $M=2^\mu$.
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item For $r\in[0,\mu]$, the map $\xi\mapsto\xi^{2^r}$ is a surjective group homomorphism from $L$ onto $L^{2^r}$, and $|L^{2^r}|=M/2^r$.
+  \item Every element of $L^{2^r}$ has exactly $2^r$ preimages in $L$.
+  \item $(L^{2^r})^2=L^{2^{r+1}}$ for $r<\mu$.
+  \item If $M\ge2$, then $-1\in L$, $-1\ne1$, and the two square roots in $L$ of any $\eta\in L^2$ are $\xi$ and $-\xi$ for either choice of square root $\xi$.
+  \item $L$ is closed under inversion: $\xi\in L$ implies $\xi^{-1}\in L$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Let $\omega$ generate the cyclic group $L$.  The image of $\xi\mapsto\xi^{2^r}$ is generated by $\omega^{2^r}$, whose order is $2^{\mu-r}=M/2^r$.  This proves (1).  The kernel therefore has cardinality $2^r$, and every fibre is a coset of the kernel, proving (2).  Item (3) follows directly from $(\xi^{2^r})^2=\xi^{2^{r+1}}$.
+
+For (4), the kernel of the squaring map has cardinality $2$ by (2).  Its elements are roots of $X^2-1=(X-1)(X+1)$.  Since the characteristic is odd, $1\ne-1$, so the kernel is $\{1,-1\}$.  Hence $-1\in L$, and the two elements in the fibre over $\xi^2$ are $\xi$ and $-\xi$.
+
+Finally, (5) is true in every subgroup of a group: if $\xi\in L$, its group inverse $\xi^{-1}$ also lies in $L$.
+\end{proof}
+
+\begin{definition}[Fibres]
+\label{def:fibres}
+Assume $|L|\ge2$.  For $\eta\in L^2$, the \emph{fibre over $\eta$} is the two-element set
+\[
+  \{\xi,-\xi\},
+  \qquad \xi^2=\eta.
+\]
+A subset $T\subseteq L$ is \emph{fibre-closed} if, whenever $\xi\in T$, also $-\xi\in T$.
+\end{definition}
+
+By \cref{lem:power-maps}, the fibres partition $L$ into $M/2$ disjoint pairs.
+
+\subsection{Reed--Solomon codes}
+\label{sec:preliminaries-rs}
+
+For a finite set $D\subseteq\F$ and a polynomial $P\in\F[X]$, write
+\[
+  \ev_D(P)\defeq(P(\xi))_{\xi\in D}.
+\]
+We use Reed--Solomon codes on smooth domains $L\subseteq\Fq^\times\subseteq\F^\times$.
+
+\begin{definition}[Reed--Solomon code]
+\label{def:rs-code}
+Let $L$ be a smooth domain of order $M$, and let $1\le d\le M$.  The Reed--Solomon code of degree bound $d$ on $L$ over $\F$ is
+\[
+  \RS_{\F}[L,d]
+  \defeq
+  \ev_L\bigl(\F[X]_{<d}\bigr)
+  \subseteq\F^L.
+\]
+Its rate is
+\[
+  \rho\defeq\frac dM.
+\]
+Elements of $\F^L$ are called \emph{words}; elements of $\RS_{\F}[L,d]$ are called \emph{codewords}.
+\end{definition}
+
+For $u,v\in\F^L$, define their relative Hamming distance by
+\[
+  \Delta(u,v)
+  \defeq
+  \frac{|\{\xi\in L:u(\xi)\ne v(\xi)\}|}{M}.
+\]
+For a nonempty set $C\subseteq\F^L$, let
+\[
+  \Delta(u,C)\defeq\min_{c\in C}\Delta(u,c).
+\]
+
+\begin{lemma}[Hamming triangle inequality]
+\label{lem:hamming-triangle}
+For $u,v,w\in\F^L$,
+\[
+  \Delta(u,w)\le\Delta(u,v)+\Delta(v,w).
+\]
+Consequently, if $u$ and $v$ agree on at least $\alpha M$ points and $v$ and $w$ agree on at least $\beta M$ points, then $u$ and $w$ agree on at least $(\alpha+\beta-1)M$ points.
+\end{lemma}
+
+\begin{proof}
+If $u(\xi)\ne w(\xi)$, then at least one of $u(\xi)\ne v(\xi)$ or $v(\xi)\ne w(\xi)$ holds.  Therefore the disagreement set of $(u,w)$ is contained in the union of the disagreement sets of $(u,v)$ and $(v,w)$.  Divide cardinalities by $M$.  The agreement statement is the same inequality written in terms of complements.
+\end{proof}
+
+\begin{proposition}[Basic Reed--Solomon parameters]
+\label{prop:rs-parameters}
+Let $C=\RS_{\F}[L,d]$, with $|L|=M$ and $1\le d\le M$.
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item The evaluation map
+  \[
+    \ev_L:\F[X]_{<d}\longrightarrow C
+  \]
+  is an $\F$-linear bijection.
+  \item Two distinct codewords agree on at most $d-1$ points of $L$.
+  \item If
+  \[
+    2\delta<1-\frac{d-1}{M},
+  \]
+  then every word $w\in\F^L$ lies within relative distance $\delta$ of at most one codeword in $C$.  In particular, this holds for every
+  \[
+    \delta\le\frac{1-\rho}{2}.
+  \]
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+Linearity is immediate.  If $P,Q\in\F[X]_{<d}$ have the same evaluation on $L$, then $P-Q$ has at least $M\ge d$ roots and degree $<d$, so \cref{lem:root-bound} gives $P=Q$.  Thus $\ev_L$ is injective, and it is surjective onto $C$ by definition, proving (1).
+
+For (2), if distinct codewords $\ev_L(P)$ and $\ev_L(Q)$ agreed on $d$ points, then $P-Q$ would have at least $d$ roots while having degree $<d$, contradicting \cref{lem:root-bound}.
+
+For (3), suppose two distinct codewords $c,c'$ both lie within distance $\delta$ of $w$.  By \cref{lem:hamming-triangle},
+\[
+  \Delta(c,c')\le2\delta<1-\frac{d-1}{M}.
+\]
+Thus $c$ and $c'$ agree on more than $d-1$ points, contradicting (2).  Finally,
+\[
+  \frac{1-\rho}{2}
+  =\frac12\left(1-\frac dM\right)
+  <\frac12\left(1-\frac{d-1}{M}\right).
+\]
+\end{proof}
+
+When $c\in\RS_{\F}[L,d]$, we write $P_c\in\F[X]_{<d}$ for its unique representing polynomial from \cref{prop:rs-parameters}(1).
+
+\begin{lemma}[Decoding a base-field word]
+\label{lem:basefield-decoding}
+Let $w\in\Fq^L$ and let $c\in\RS_{\F}[L,d]$ satisfy
+\[
+  \Delta(w,c)<\frac12\left(1-\frac{d-1}{M}\right).
+\]
+Then $P_c\in\Fq[X]_{<d}$, and hence $c\in\Fq^L$.
+\end{lemma}
+
+\begin{proof}
+Let $\varphi:\F\to\F$ be the $q$-power Frobenius map, $x\mapsto x^q$.  It is a field automorphism whose fixed field is exactly $\Fq$.  Apply $\varphi$ coefficientwise to polynomials and entrywise to words.  Since every $\xi\in L$ lies in $\Fq$,
+\[
+  \varphi(P(\xi))=\varphi(P)(\xi).
+\]
+Therefore $\varphi(c)=\ev_L(\varphi(P_c))$ is another codeword in $\RS_{\F}[L,d]$.  Since $w\in\Fq^L$, $\varphi(w)=w$, and the Frobenius map is injective, so
+\[
+  \Delta(w,\varphi(c))=\Delta(w,c).
+\]
+By the uniqueness radius in \cref{prop:rs-parameters}(3), $\varphi(c)=c$.  Hence
+\[
+  \ev_L(\varphi(P_c))=\ev_L(P_c).
+\]
+Injectivity of evaluation on $\F[X]_{<d}$ gives $\varphi(P_c)=P_c$.  Every coefficient of $P_c$ is therefore fixed by Frobenius and lies in $\Fq$.
+\end{proof}
+
+For knowledge extraction we will use the standard existence of a polynomial-time unique-decoding algorithm for Reed--Solomon codes inside half the minimum distance~\cite{WelchBerlekamp86,Gao03}.  The algebraic soundness arguments below use only uniqueness, which was proved in \cref{prop:rs-parameters}.
+
+\subsection{Even--odd splitting of words and fibre distance}
+\label{sec:preliminaries-fibre-distance}
+
+Let $L$ be a smooth domain of order $M\ge2$.  For a word $w\in\F^L$, define words $w_{\mathrm e},w_{\mathrm o}\in\F^{L^2}$ by
+\begin{equation}
+  w_{\mathrm e}(\xi^2)
+  \defeq
+  \frac{w(\xi)+w(-\xi)}{2},
+  \qquad
+  w_{\mathrm o}(\xi^2)
+  \defeq
+  \frac{w(\xi)-w(-\xi)}{2\xi}.
+  \label{eq:evenodd-word}
+\end{equation}
+The denominators are nonzero because the characteristic is odd and $L\subseteq\Fq^\times$.
+
+\begin{lemma}[Even--odd split of words]
+\label{lem:evenodd-word}
+For $w\in\F^L$:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item The definitions in~\eqref{eq:evenodd-word} are independent of the choice of square root $\xi$.
+  \item The map $w\mapsto(w_{\mathrm e},w_{\mathrm o})$ is $\F$-linear and depends on each fibre independently.
+  \item For every $\xi\in L$,
+  \[
+    w(\xi)=w_{\mathrm e}(\xi^2)+\xi w_{\mathrm o}(\xi^2),
+    \qquad
+    w(-\xi)=w_{\mathrm e}(\xi^2)-\xi w_{\mathrm o}(\xi^2).
+  \]
+  \item If $P\in\F[X]_{<2d}$, $d\le M/2$, and $w=\ev_L(P)$, then
+  \[
+    w_{\mathrm e}=\ev_{L^2}(P_{\mathrm e}),
+    \qquad
+    w_{\mathrm o}=\ev_{L^2}(P_{\mathrm o}),
+  \]
+  where $P_{\mathrm e},P_{\mathrm o}$ are from \cref{lem:evenodd-polynomial}.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Replacing $\xi$ by $-\xi$ leaves both right-hand sides of~\eqref{eq:evenodd-word} unchanged, and by \cref{lem:power-maps}(4) these are the only two square roots in $L$, proving (1).  Linearity and fibre locality are immediate, proving (2).  Adding and subtracting the two equations in~\eqref{eq:evenodd-word} gives (3).
+
+For (4), use
+\[
+  P(\xi)=P_{\mathrm e}(\xi^2)+\xi P_{\mathrm o}(\xi^2),
+  \qquad
+  P(-\xi)=P_{\mathrm e}(\xi^2)-\xi P_{\mathrm o}(\xi^2)
+\]
+and substitute into~\eqref{eq:evenodd-word}.
+\end{proof}
+
+The folding soundness argument is naturally expressed in terms of fibres rather than individual positions.
+
+\begin{definition}[Fibre distance]
+\label{def:fibre-distance}
+For words $u,v\in\F^L$, define
+\[
+  \Delta_{\mathrm{fib}}(u,v)
+  \defeq
+  \frac{
+    |\{\eta\in L^2:\text{$u$ and $v$ differ at at least one point of the fibre over $\eta$}\}|
+  }{|L^2|}.
+\]
+For a nonempty code $C\subseteq\F^L$, put
+\[
+  \Delta_{\mathrm{fib}}(u,C)
+  \defeq
+  \min_{c\in C}\Delta_{\mathrm{fib}}(u,c).
+\]
+\end{definition}
+
+\begin{lemma}[Hamming and fibre distance]
+\label{lem:hamming-fibre}
+For $u,v\in\F^L$,
+\[
+  \Delta(u,v)\le\Delta_{\mathrm{fib}}(u,v)\le 2\Delta(u,v).
+\]
+In particular, if $u$ and $v$ agree on a fibre-closed set $T\subseteq L$ with $|T|\ge(1-\delta)M$, then
+\[
+  \Delta_{\mathrm{fib}}(u,v)\le\delta.
+\]
+\end{lemma}
+
+\begin{proof}
+Let $B$ be the number of bad fibres, that is, fibres on which $u$ and $v$ differ at one or both points, and let $D$ be the number of pointwise disagreements.  Every bad fibre contributes at least one and at most two disagreements, so
+\[
+  B\le D\le2B.
+\]
+Since $|L^2|=M/2$,
+\[
+  \Delta_{\mathrm{fib}}(u,v)=\frac{B}{M/2}=\frac{2B}{M},
+  \qquad
+  \Delta(u,v)=\frac DM.
+\]
+Thus $\Delta(u,v)\le\Delta_{\mathrm{fib}}(u,v)\le2\Delta(u,v)$.
+
+For the last statement, the complement $L\setminus T$ is fibre-closed and contains at most $\delta M$ points, hence at most $\delta M/2$ fibres.  Every bad fibre is contained in this complement, so the fibre distance is at most $(\delta M/2)/(M/2)=\delta$.
+\end{proof}
+
+\subsection{Correlated agreement for Reed--Solomon curves}
+\label{sec:preliminaries-correlated-agreement}
+
+The soundness arguments later batch several words by a random challenge.  The required coding-theoretic input is the correlated-agreement theorem of Ben-Sasson, Carmon, Ishai, Kopparty, and Saraf~\cite{BSCI23}.  We state precisely the form used in this paper.
+
+For $t\ge1$ and words $u_0,\ldots,u_t\in\F^L$, define the degree-$t$ word curve
+\begin{equation}
+  u_\beta\defeq\sum_{i=0}^{t}\beta^iu_i,
+  \qquad \beta\in\F.
+  \label{eq:word-curve}
+\end{equation}
+
+\begin{theorem}[Correlated agreement for Reed--Solomon curves~\cite{BSCI23}]
+\label{thm:correlated-agreement}
+Let
+\[
+  C=\RS_{\F}[L,d],
+  \qquad |L|=M,
+  \qquad \rho=d/M,
+\]
+and let
+\[
+  0<\delta\le\frac{1-\rho}{2}.
+\]
+Fix $t\ge1$ and $u_0,\ldots,u_t\in\F^L$, and let $u_\beta$ be defined by~\eqref{eq:word-curve}.  Define
+\[
+  Z\defeq\{\beta\in\F:\Delta(u_\beta,C)\le\delta\}.
+\]
+If
+\[
+  |Z|>tM,
+\]
+then there exist a set $T\subseteq L$ with
+\[
+  |T|\ge(1-\delta)M
+\]
+and codewords $c_0,\ldots,c_t\in C$ such that
+\[
+  u_i(\xi)=c_i(\xi)
+  \qquad
+  \text{for every }i\in[0,t]\text{ and every }\xi\in T.
+\]
+\end{theorem}
+
+\begin{remark}[External input]
+\label{rem:external-input}
+\Cref{thm:correlated-agreement} is the only non-elementary coding-theoretic theorem used in the algebraic batching arguments of this paper.  All consequences drawn from it, including the fibre-closed agreement sets needed by the folding protocol, are proved explicitly in the later soundness sections.  The theorem is applied over the challenge field $\F$ even though the evaluation domain satisfies $L\subseteq\Fq^\times$.
+\end{remark}
+
+\subsection{Parameters used throughout}
+\label{sec:preliminaries-parameters}
+
+The main constructions use the following common parameter regime.  Let
+\[
+  N=2^n,
+  \qquad
+  M=2^{n+R}=N2^R
+\]
+for an integer redundancy parameter $R\ge1$, and let $L\le\Fq^\times$ be the smooth domain of order $M$.  The base Reed--Solomon code is
+\begin{equation}
+  C_0\defeq\RS_{\F}[L,N],
+  \qquad
+  \rho\defeq\frac NM=2^{-R}.
+  \label{eq:base-code}
+\end{equation}
+We write
+\begin{equation}
+  \delta_*\defeq\frac{1-\rho}{2}
+  \label{eq:unique-radius}
+\end{equation}
+for the unique-decoding radius used by the soundness proofs.  When the folding backend is run for $\ell$ binary levels, we use the nested domains
+\[
+  L_j\defeq L^{2^j},
+  \qquad
+  |L_j|=M/2^j,
+\]
+and degree bounds
+\[
+  d_j\defeq N/2^j
+\]
+for those $j$ for which $2^j$ divides $N$.  The corresponding Reed--Solomon codes are
+\[
+  C_j\defeq\RS_{\F}[L_j,d_j].
+\]
+The precise folding protocol, its query parameter $\kappa$, and its error term $\varepsilon_{\mathrm{fold}}$ are defined later; this section fixes only the algebraic objects on which that protocol acts.

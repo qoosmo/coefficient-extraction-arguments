@@ -1,0 +1,560 @@
+\section{Committed Hadamard Relations}
+\label{sec:hadamard}
+
+The inner-product protocol of \cref{sec:inner-product} proves one bilinear scalar relation.  Many proof systems need the stronger coordinatewise statement
+\[
+  a(w)b(w)=c(w)
+  \qquad\text{for every }w\in\B^n,
+\]
+for three committed tables $a,b,c:\B^n\to\F$.  Equivalently,
+\[
+  a\had b=c,
+\]
+where $(a\had b)(w)=a(w)b(w)$.  A direct proof of all $N$ coordinate equations would destroy succinctness.  Instead we compress them with one random geometric weighting and then reduce the resulting scalar bilinear claim to the coefficient-extraction primitive of the preceding sections.
+
+The construction uses one additional idea.  After the verifier chooses the geometric challenge $\gamma$, the first factor becomes the polynomial $V_a(\gamma X)$.  Its values are not, in general, values of $V_a$ on the original Reed--Solomon domain $L$.  We therefore let the prover commit to a word for this scaled polynomial and bind it back to the original commitment by two DEEP quotient relations.  A third DEEP quotient binds the compressed output value $V_c(\gamma)$ to the commitment to $c$.  All low-degree words are then placed in one random curve and tested by one folding proximity test.
+
+\subsection{Random geometric compression}
+\label{sec:hadamard-geometric-compression}
+
+\begin{definition}[Hadamard product]
+\label{def:hadamard-product}
+For tables $a,b:\B^n\to\F$, their \emph{Hadamard product} is the table
+\[
+  a\had b:\B^n\to\F,
+  \qquad
+  (a\had b)(w)=a(w)b(w).
+\]
+\end{definition}
+
+For a table $d:\B^n\to\F$, recall that
+\[
+  V_d(X)=\sum_{w=0}^{N-1}d(w)X^w.
+\]
+Thus $d=0$ if and only if $V_d=0$.
+
+\begin{lemma}[Geometric fingerprint]
+\label{lem:hadamard-geometric-fingerprint}
+Let $a,b,c:\B^n\to\F$ and put
+\[
+  d=a\had b-c.
+\]
+Then
+\begin{equation}
+  V_d(\gamma)
+  =\sum_{w=0}^{N-1}\gamma^w\bigl(a(w)b(w)-c(w)\bigr)
+  \qquad(\gamma\in\F).
+  \label{eq:hadamard-fingerprint}
+\end{equation}
+If $a\had b\ne c$, then $V_d$ is a nonzero polynomial of degree at most $N-1$, and therefore
+\begin{equation}
+  \Pr_{\gamma\leftarrow\F}
+  \left[
+    \sum_{w=0}^{N-1}\gamma^wa(w)b(w)
+    =\sum_{w=0}^{N-1}\gamma^wc(w)
+  \right]
+  \le \frac{N-1}{|\F|}.
+  \label{eq:hadamard-fingerprint-bound}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Equation \eqref{eq:hadamard-fingerprint} is the definition of $V_d$.  If $a\had b\ne c$, then $d(w)\ne0$ for at least one $w$, so $V_d\ne0$ because its coefficients are exactly the values $d(w)$.  Its degree is at most $N-1$.  The event in \eqref{eq:hadamard-fingerprint-bound} is exactly $V_d(\gamma)=0$, so the root bound of \cref{lem:root-bound} gives the result.
+\end{proof}
+
+The weighted bilinear sum in \eqref{eq:hadamard-fingerprint} is again a middle coefficient.
+
+\begin{lemma}[Weighted Hadamard coefficient identity]
+\label{lem:weighted-hadamard-coefficient}
+For tables $a,b:\B^n\to\F$ and every $\gamma\in\F$,
+\begin{equation}
+  \sum_{w=0}^{N-1}\gamma^wa(w)b(w)
+  =
+  [X^{N-1}]\,V_a(\gamma X)V_b^{\star}(X).
+  \label{eq:weighted-hadamard-coefficient}
+\end{equation}
+Moreover,
+\begin{equation}
+  \sum_{w=0}^{N-1}\gamma^wc(w)=V_c(\gamma).
+  \label{eq:weighted-c-evaluation}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+The coefficient of $X^w$ in $V_a(\gamma X)$ is $\gamma^wa(w)$.  Apply \cref{thm:middle-coefficient-inner-product} to the two coefficient vectors of $V_a(\gamma X)$ and $V_b$.  This gives \eqref{eq:weighted-hadamard-coefficient}.  Equation \eqref{eq:weighted-c-evaluation} is the definition of $V_c$.
+\end{proof}
+
+Consequently, if we write
+\begin{equation}
+  Q_\gamma(X)\defeq V_a(\gamma X),
+  \label{eq:hadamard-Q-honest}
+\end{equation}
+then the compressed Hadamard relation is
+\begin{equation}
+  V_c(\gamma)
+  = [X^{N-1}]Q_\gamma(X)V_b^{\star}(X).
+  \label{eq:hadamard-compressed-relation}
+\end{equation}
+The right-hand side can be proved by the committed inner-product/coefficient-extraction mechanism.  It remains to bind $Q_\gamma$ to $V_a$ and the scalar $V_c(\gamma)$ to $V_c$.
+
+\subsection{The relation and protocol}
+\label{sec:hadamard-protocol}
+
+\begin{definition}[Committed Hadamard relation]
+\label{def:hadamard-relation}
+Fix $0<\delta\le(1-\rho)/2$.  The relation $\mathcal R^{\delta}_{\mathrm{Had}}$ consists of pairs
+\[
+  ((w_a,w_b,w_c),(a,b,c))
+\]
+with $w_a,w_b,w_c\in\F^L$ and tables $a,b,c:\B^n\to\F$ such that
+\begin{align}
+  \Delta_{\mathrm{fib}}(w_a,\Enc_T(a))&\le\delta,
+  \label{eq:had-relation-a}\\
+  \Delta_{\mathrm{fib}}(w_b,\Enc_T(b))&\le\delta,
+  \label{eq:had-relation-b}\\
+  \Delta_{\mathrm{fib}}(w_c,\Enc_T(c))&\le\delta,
+  \label{eq:had-relation-c}\\
+  a\had b&=c.
+  \label{eq:had-relation-product}
+\end{align}
+The instance is $(w_a,w_b,w_c)$ and the witness is $(a,b,c)$.
+\end{definition}
+
+For the protocol below, the verifier samples $\gamma,\theta$ uniformly from $\F$.  If any of
+\begin{equation}
+  \gamma,\qquad \theta,\qquad \gamma\theta
+  \label{eq:had-poles}
+\end{equation}
+lies in $L$, the verifier rejects.  This convention keeps the DEEP quotients of \cref{sec:deep-quotients} pole-free.  It costs only a small completeness term and can be removed by rejection-sampling challenges from the allowed set; see \cref{rem:had-perfect-completeness}.
+
+\begin{definition}[Hadamard protocol $\Pi_{\mathrm{Had}}$]
+\label{def:hadamard-protocol}
+The instance is $(w_a,w_b,w_c)$.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The verifier samples $\gamma\leftarrow\F$.  The prover sends an oracle word $w_Q\in\F^L$; honestly,
+  \[
+    w_Q=\ev_L(Q_\gamma),
+    \qquad
+    Q_\gamma(X)=V_a(\gamma X).
+  \]
+  \item The verifier samples $\theta\leftarrow\F$.  The prover sends scalars $y_1,y_3\in\F$ and an oracle word $w_A\in\F^L$; honestly,
+  \begin{equation}
+    y_1=V_a(\gamma\theta)=Q_\gamma(\theta),
+    \qquad
+    y_3=V_c(\gamma),
+    \label{eq:had-honest-values}
+  \end{equation}
+  and $w_A=\ev_L(A)$, where
+  \begin{equation}
+    XQ_\gamma(X)V_b^{\star}(X)
+    =A(X)+y_3X^N+X^{N+1}H(X)
+    \label{eq:had-opening-identity}
+  \end{equation}
+  is the universal split of \cref{thm:universal-split}.
+  \item If one of the three points in \eqref{eq:had-poles} lies in $L$, the verifier rejects.  Otherwise it samples $\beta\leftarrow\F$ and defines the following virtual words:
+  \begin{align}
+    w_b^{\star}(\xi)
+      &\defeq \xi^{N-1}w_b(\xi^{-1}),
+      \label{eq:had-wrev}\\
+    h(\xi)
+      &\defeq
+      \frac{\xi w_Q(\xi)w_b^{\star}(\xi)-w_A(\xi)-y_3\xi^N}{\xi^{N+1}},
+      \label{eq:had-high}\\
+    q_a(\xi)
+      &\defeq \mathsf Q[w_a;y_1,\gamma\theta](\xi),
+      \label{eq:had-qa}\\
+    q_Q(\xi)
+      &\defeq \mathsf Q[w_Q;y_1,\theta](\xi),
+      \label{eq:had-qQ}\\
+    q_c(\xi)
+      &\defeq \mathsf Q[w_c;y_3,\gamma](\xi).
+      \label{eq:had-qc}
+  \end{align}
+  It batches the nine words
+  \begin{equation}
+  \begin{split}
+    w_0^{(\beta)}={}&
+      w_a+\beta w_c+\beta^2w_Q+\beta^3w_b^{\star}
+      +\beta^4w_A+\beta^5h\\
+      &+\beta^6q_a+\beta^7q_Q+\beta^8q_c.
+  \end{split}
+  \label{eq:had-batch}
+  \end{equation}
+  \item The parties run $\Pi_{\mathrm{FT}}[\ell,\kappa]$, or a sparse-level variant covered by \cref{prop:virtual-levels}, on $w_0^{(\beta)}$.
+\end{enumerate}
+\end{definition}
+
+The scalar $y_1$ is deliberately reused in two DEEP relations.  If both quotient words decode correctly, they force
+\[
+  V_a(\gamma\theta)=y_1=Q(\theta),
+\]
+which links the newly committed scaled polynomial $Q$ to the original commitment to $a$ at a random point.  The third quotient similarly forces $V_c(\gamma)=y_3$.
+
+\begin{theorem}[Completeness]
+\label{thm:had-completeness}
+Suppose
+\[
+  w_a=\Enc_T(a),
+  \qquad
+  w_b=\Enc_T(b),
+  \qquad
+  w_c=\Enc_T(c),
+  \qquad
+  a\had b=c.
+\]
+Conditioned on $\gamma,\theta,\gamma\theta\notin L$, the honest prover is accepted by $\Pi_{\mathrm{Had}}$ with probability $1$.  With uniform unrestricted $\gamma,\theta\leftarrow\F$ as in \cref{def:hadamard-protocol}, the honest acceptance probability is at least
+\begin{equation}
+  1-\frac{3M}{|\F|}.
+  \label{eq:had-completeness-prob}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Let $Q_\gamma=V_a(\gamma X)$.  By \cref{lem:weighted-hadamard-coefficient} and $a\had b=c$,
+\[
+  [X^{N-1}]Q_\gamma V_b^{\star}
+  =\sum_w\gamma^wa(w)b(w)
+  =\sum_w\gamma^wc(w)
+  =V_c(\gamma)=y_3.
+\]
+Hence \cref{thm:universal-split} gives $A,H\in\F[X]_{<N}$ satisfying \eqref{eq:had-opening-identity}.  The virtual reversal \eqref{eq:had-wrev} is $\ev_L(V_b^{\star})$ by \cref{lem:reversal-commutes-evaluation}, and evaluating \eqref{eq:had-opening-identity} on $L$ shows that \eqref{eq:had-high} is $\ev_L(H)$.
+
+Because the three poles lie outside $L$, \cref{lem:deep-honest} gives
+\begin{align*}
+  q_a&=\ev_L\!\left(\frac{V_a-y_1}{X-\gamma\theta}\right),\\
+  q_Q&=\ev_L\!\left(\frac{Q_\gamma-y_1}{X-\theta}\right),\\
+  q_c&=\ev_L\!\left(\frac{V_c-y_3}{X-\gamma}\right),
+\end{align*}
+and each quotient polynomial has degree at most $N-2$.  Therefore every one of the nine component words in \eqref{eq:had-batch} is a codeword in $C_0$, and so is their linear combination for every $\beta$.  Folding completeness, \cref{prop:folding-completeness}, proves conditional acceptance with probability $1$.
+
+It remains to bound the pole event.  Since $|L|=M$,
+\[
+  \Pr[\gamma\in L]=\frac{M}{|\F|},
+  \qquad
+  \Pr[\theta\in L]=\frac{M}{|\F|}.
+\]
+For fixed $\gamma\ne0$, multiplication by $\gamma$ is a bijection of $\F$, so
+\[
+  \Pr[\gamma\theta\in L\mid\gamma]=\frac{M}{|\F|}.
+\]
+If $\gamma=0$, then $\gamma\theta=0\notin L$ because $L\subseteq\F^\times$.  A union bound gives \eqref{eq:had-completeness-prob}.
+\end{proof}
+
+\begin{remark}[Perfect completeness by rejection sampling]
+\label{rem:had-perfect-completeness}
+The completeness loss in \eqref{eq:had-completeness-prob} is not intrinsic.  One may sample $\gamma$ outside $L$ and then sample $\theta$ outside $L\cup\gamma^{-1}L$.  The protocol is then perfectly complete.  Soundness is obtained by replacing full-field root probabilities with the corresponding challenge-set denominators.  We keep unrestricted challenges in the main analysis because they give the cleanest algebraic error terms and make the Schwartz--Zippel contributions explicit.
+\end{remark}
+
+\subsection{A degree-eight batching lemma}
+\label{sec:hadamard-batching}
+
+The random word \eqref{eq:had-batch} is a degree-$8$ curve in $\beta$.  Correlated agreement therefore recovers simultaneous low-degree explanations for all nine words whenever too many $\beta$ values make the batch close to $C_0$.  The DEEP consistency lemma then turns three of those explanations into out-of-domain evaluation identities.
+
+\begin{lemma}[Hadamard batching lemma]
+\label{lem:had-batching}
+Fix $\gamma,\theta\in\F$ with
+\[
+  \gamma,\theta,\gamma\theta\notin L,
+\]
+and fix the prover's messages $w_Q,y_1,y_3,w_A$.  Let the nine words $u_0,\ldots,u_8$ be
+\[
+  (u_0,\ldots,u_8)
+  =
+  (w_a,w_c,w_Q,w_b^{\star},w_A,h,q_a,q_Q,q_c),
+\]
+and let $w_0^{(\beta)}=\sum_{i=0}^8\beta^iu_i$.  Let $G$ be the set of $\beta\in\F$ for which there exist a codeword $c_\beta\in C_0$ and a fibre-closed set $T_\beta\subseteq L$ with
+\[
+  |T_\beta|\ge(1-\delta)M
+\]
+such that $w_0^{(\beta)}=c_\beta$ on $T_\beta$.  Assume
+\begin{equation}
+  2N<(1-\delta)M.
+  \label{eq:had-degree-margin}
+\end{equation}
+If $|G|>8M$, then there exist tables $a,b,c:\B^n\to\F$ and a polynomial $\widehat Q\in\F[X]_{<N}$ such that
+\begin{align}
+  \Delta_{\mathrm{fib}}(w_a,\Enc_T(a))&\le\delta,
+  \label{eq:had-batch-decode-a}\\
+  \Delta_{\mathrm{fib}}(w_b,\Enc_T(b))&\le\delta,
+  \label{eq:had-batch-decode-b}\\
+  \Delta_{\mathrm{fib}}(w_c,\Enc_T(c))&\le\delta,
+  \label{eq:had-batch-decode-c}\\
+  \Delta_{\mathrm{fib}}(w_Q,\ev_L(\widehat Q))&\le\delta,
+  \label{eq:had-batch-decode-Q}\\
+  V_a(\gamma\theta)&=y_1=\widehat Q(\theta),
+  \label{eq:had-batch-link-Q}\\
+  V_c(\gamma)&=y_3=[X^{N-1}]\widehat Q(X)V_b^{\star}(X).
+  \label{eq:had-batch-coefficient}
+\end{align}
+\end{lemma}
+
+\begin{proof}
+For every $\beta\in G$, the batch lies within Hamming distance $\delta$ of $C_0$.  Apply \cref{thm:correlated-agreement} with $t=8$ to $u_0,\ldots,u_8$.  After enlarging the common agreement set maximally, there exist a set $T\subseteq L$, $|T|\ge(1-\delta)M$, and polynomials
+\[
+  P_0,\ldots,P_8\in\F[X]_{<N}
+\]
+such that
+\begin{equation}
+  u_i(\xi)=P_i(\xi)
+  \qquad
+  (0\le i\le8,\ \xi\in T),
+  \label{eq:had-correlated-agreement}
+\end{equation}
+and for every $\xi\notin T$ at least one of these nine equalities fails.
+
+First recover the coefficient identity.  Define
+\[
+  \Phi(X)
+  =XP_2(X)P_3(X)-P_4(X)-y_3X^N-X^{N+1}P_5(X).
+\]
+By \cref{lem:universal-identity}, $\deg\Phi\le2N$.  For every $\xi\in T$, the definition \eqref{eq:had-high} gives
+\[
+  \Phi(\xi)
+  =\xi w_Q(\xi)w_b^{\star}(\xi)-w_A(\xi)-y_3\xi^N-\xi^{N+1}h(\xi)
+  =0.
+\]
+Since $|T|\ge(1-\delta)M>2N$, root counting gives $\Phi=0$.  Hence
+\begin{equation}
+  y_3=[X^{N-1}]P_2P_3.
+  \label{eq:had-batch-middle}
+\end{equation}
+
+Next use the quotient words.  The degree margin implies
+\[
+  |T|>2N\ge N+2,
+\]
+because $N\ge2$.  Apply \cref{lem:deep-consistency} on the common set $T$ to the triples
+\[
+  (P_0,P_6;\gamma\theta,y_1),
+  \qquad
+  (P_2,P_7;\theta,y_1),
+  \qquad
+  (P_1,P_8;\gamma,y_3).
+\]
+The three poles are outside $L$ by assumption.  We obtain
+\begin{equation}
+  P_0(\gamma\theta)=y_1,
+  \qquad
+  P_2(\theta)=y_1,
+  \qquad
+  P_1(\gamma)=y_3.
+  \label{eq:had-batch-deep-values}
+\end{equation}
+
+It remains to turn pointwise agreement on $T$ into fibre-distance bounds.  For $\xi\notin T$, define the discrepancy polynomial
+\[
+  d_\xi(Z)
+  =\sum_{i=0}^8 Z^i\bigl(u_i(\xi)-P_i(\xi)\bigr).
+\]
+By maximality of $T$, $d_\xi$ is nonzero and has degree at most $8$.  The union of all its roots over $\xi\notin T$ has size at most
+\[
+  8|L\setminus T|\le8\delta M<8M<|G|.
+\]
+Choose $\beta\in G$ outside this union and let $T_\beta$ be its fibre-closed agreement set with $c_\beta$.  Put
+\[
+  \widehat c_\beta
+  =\ev_L\!\left(\sum_{i=0}^8\beta^iP_i\right)\in C_0.
+\]
+On $T\cap T_\beta$, both $c_\beta$ and $\widehat c_\beta$ equal $w_0^{(\beta)}$.  Moreover,
+\[
+  |T\cap T_\beta|
+  \ge(1-2\delta)M
+  \ge\rho M
+  =N,
+\]
+where the middle inequality uses $\delta\le(1-\rho)/2$.  Two degree-$<N$ codewords agreeing on at least $N$ points are equal by \cref{prop:rs-parameters}(2).  Hence $c_\beta=\widehat c_\beta$.  If $\xi\in T_\beta$, then
+\[
+  d_\xi(\beta)
+  =w_0^{(\beta)}(\xi)-\widehat c_\beta(\xi)
+  =0.
+\]
+Our choice of $\beta$ forces $\xi\in T$, so $T_\beta\subseteq T$.
+
+Therefore all nine component words agree with their polynomial explanations on the same fibre-closed set $T_\beta$ of size at least $(1-\delta)M$.  Define the tables and auxiliary polynomial by
+\[
+  V_a=P_0,
+  \qquad
+  V_c=P_1,
+  \qquad
+  \widehat Q=P_2,
+  \qquad
+  V_b=P_3^{\star}.
+\]
+The table isomorphism of \cref{prop:table-isomorphism} makes these definitions unique.  Since $P_3=V_b^{\star}$ and $w_b^{\star}=\ev_L(P_3)$ on $T_\beta$, reversal and inversion transport this agreement to $w_b=\Enc_T(b)$ on $T_\beta^{-1}$, a fibre-closed set of the same size by \cref{lem:inversion-preserves-fibres}.  The fibre-distance bounds \eqref{eq:had-batch-decode-a}--\eqref{eq:had-batch-decode-Q} now follow from \cref{lem:hamming-fibre}.
+
+Finally, \eqref{eq:had-batch-deep-values} becomes
+\[
+  V_a(\gamma\theta)=y_1=\widehat Q(\theta),
+  \qquad
+  V_c(\gamma)=y_3,
+\]
+and \eqref{eq:had-batch-middle} becomes
+\[
+  y_3=[X^{N-1}]\widehat QV_b^{\star}.
+\]
+This proves \eqref{eq:had-batch-link-Q} and \eqref{eq:had-batch-coefficient}.
+\end{proof}
+
+\subsection{Soundness}
+\label{sec:hadamard-soundness}
+
+The batching lemma says that a successful $\beta$-curve determines a decoded auxiliary polynomial $\widehat Q$.  The earlier challenge $\theta$ then certifies that this polynomial is the intended scaling $V_a(\gamma X)$, except with a root-counting error.  Finally the challenge $\gamma$ tests the original coordinatewise Hadamard relation.
+
+\begin{theorem}[Soundness of the Hadamard protocol]
+\label{thm:had-soundness}
+Assume
+\[
+  0<\delta\le\frac{1-\rho}{2},
+  \qquad
+  2N<(1-\delta)M.
+\]
+If $(w_a,w_b,w_c)$ has no witness in $\mathcal R^{\delta}_{\mathrm{Had}}$, then every prover is accepted by $\Pi_{\mathrm{Had}}$ with probability at most
+\begin{equation}
+  \varepsilon_{\mathrm{Had}}
+  \defeq
+  \frac{2(N-1)}{|\F|}
+  +\frac{8M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+  \label{eq:had-soundness-bound}
+\end{equation}
+The same bound holds for every sparse-level folding variant covered by \cref{prop:virtual-levels}.
+\end{theorem}
+
+\begin{proof}
+It is enough to consider a deterministic prover; the acceptance probability of a randomized prover is an average over its internal randomness.
+
+If one of $w_a,w_b,w_c$ has no table within fibre distance $\delta$, then \cref{lem:had-batching} cannot hold for any pole-free pair $(\gamma,\theta)$ and any round-two messages.  Hence the only way to pass is through the bounded set of $\beta$ values or through the folding/query error already accounted for below.  We may therefore assume that the three source words uniquely decode, by \cref{prop:unique-table-near-word}, to tables $a,b,c$.
+
+Since the instance is false, these decoded tables satisfy
+\[
+  d\defeq a\had b-c\ne0.
+\]
+Let
+\[
+  D(X)=V_d(X)=\sum_{w=0}^{N-1}\bigl(a(w)b(w)-c(w)\bigr)X^w.
+\]
+By \cref{lem:hadamard-geometric-fingerprint}, $D$ is nonzero of degree at most $N-1$.  Thus at most $N-1$ choices of $\gamma$ satisfy $D(\gamma)=0$.
+
+Fix now a value of $\gamma$ with $D(\gamma)\ne0$, and fix the prover's first-round word $w_Q$, which may depend on $\gamma$.  If $w_Q$ has no degree-$<N$ codeword within fibre distance $\delta$, then \cref{lem:had-batching} cannot hold for any pole-free $\theta$.  Otherwise let $\widehat Q\in\F[X]_{<N}$ be its unique decoded polynomial.
+
+Suppose first that
+\begin{equation}
+  \widehat Q(X)=V_a(\gamma X).
+  \label{eq:had-Q-correct}
+\end{equation}
+If, for some pole-free $\theta$ and the prover's corresponding round-two messages, the set $G$ of \cref{lem:had-batching} had size greater than $8M$, that lemma would give
+\[
+  V_c(\gamma)
+  =[X^{N-1}]\widehat QV_b^{\star}.
+\]
+Using \eqref{eq:had-Q-correct} and \cref{lem:weighted-hadamard-coefficient}, this says
+\[
+  \sum_w\gamma^wc(w)
+  =\sum_w\gamma^wa(w)b(w),
+\]
+that is, $D(\gamma)=0$, a contradiction.  Hence for a correctly decoded $\widehat Q$, every pole-free $\theta$ has $|G|\le8M$.
+
+Suppose instead that
+\[
+  \widehat Q(X)\ne V_a(\gamma X).
+\]
+Then
+\[
+  R_\gamma(Y)=\widehat Q(Y)-V_a(\gamma Y)
+\]
+is a nonzero polynomial of degree at most $N-1$.  If a pole-free $\theta$ and the corresponding messages gave $|G|>8M$, \cref{lem:had-batching} would force
+\[
+  V_a(\gamma\theta)=\widehat Q(\theta),
+\]
+so $R_\gamma(\theta)=0$.  There are at most $N-1$ such values of $\theta$ by \cref{lem:root-bound}.
+
+We have proved that, for a false decoded Hadamard relation, the probability over the first two unrestricted field challenges of reaching a pair $(\gamma,\theta)$ for which the actual prover messages yield $|G|>8M$ is at most
+\begin{equation}
+  \frac{N-1}{|\F|}+\frac{N-1}{|\F|}
+  =\frac{2(N-1)}{|\F|}.
+  \label{eq:had-bad-gamma-theta}
+\end{equation}
+The protocol rejects pole pairs, so they cannot increase this acceptance probability.
+
+Condition on a remaining pair $(\gamma,\theta)$ and its fixed prover messages.  Then $|G|\le8M$, hence
+\[
+  \Pr_{\beta\leftarrow\F}[\beta\in G]\le\frac{8M}{|\F|}.
+\]
+For $\beta\notin G$, the codeword-chain argument of \cref{thm:generic-ce-soundness}, applied to the family $w_0^{(\beta)}$, gives at most
+\[
+  \varepsilon_{\mathrm{fold}}+(1-\delta)^\kappa
+\]
+additional acceptance probability: if the folding challenges are good and the final witness density were at least $1-\delta$, the accepted batch would agree with a codeword on a fibre-closed set of size at least $(1-\delta)M$, placing $\beta$ in $G$.  Combining this with \eqref{eq:had-bad-gamma-theta} gives \eqref{eq:had-soundness-bound}.  The sparse-level statement follows from \cref{prop:virtual-levels}.
+\end{proof}
+
+\begin{remark}[Origin of the error terms]
+\label{rem:had-error-terms}
+The four contributions in \eqref{eq:had-soundness-bound} have different meanings:
+\begin{itemize}[leftmargin=*]
+  \item $(N-1)/|\F|$ fingerprints the false coordinatewise relation $a\had b\ne c$ at $\gamma$;
+  \item a second $(N-1)/|\F|$ binds the prover's auxiliary polynomial $\widehat Q$ to the intended scaling $V_a(\gamma X)$ at $\theta$;
+  \item $8M/|\F|$ is the correlated-agreement field term for a degree-$8$ batch curve;
+  \item $\varepsilon_{\mathrm{fold}}+(1-\delta)^\kappa$ is the common Reed--Solomon proximity error.
+\end{itemize}
+The protocol therefore separates the algebraic fingerprints from the code-proximity test cleanly.
+\end{remark}
+
+\subsection{Decoding and extraction consequences}
+\label{sec:hadamard-extraction}
+
+\begin{proposition}[Uniqueness of the decoded Hadamard witness]
+\label{prop:had-witness-unique}
+Assume $0<\delta\le(1-\rho)/2$.  For fixed words $w_a,w_b,w_c\in\F^L$, there is at most one triple of tables $(a,b,c)$ satisfying the three distance conditions \eqref{eq:had-relation-a}--\eqref{eq:had-relation-c}.  Hence the truth of $a\had b=c$ is determined by the three source words whenever all three unique decodings exist.
+\end{proposition}
+
+\begin{proof}
+Apply \cref{prop:unique-table-near-word} independently to $w_a,w_b,w_c$.
+\end{proof}
+
+\begin{proposition}[Polynomial-time decoded witness extraction]
+\label{prop:had-decoding-extractor}
+Assume $0<\delta\le(1-\rho)/2$ and a polynomial-time Reed--Solomon unique decoder for radius $\delta$.  Given $(w_a,w_b,w_c)$, one can in time polynomial in $M$ either reject because one of the three words has no codeword within distance $\delta$, or recover the unique decoded tables $(a,b,c)$ and check the coordinatewise relation $a\had b=c$ in $O(N)$ additional field multiplications/comparisons.
+\end{proposition}
+
+\begin{proof}
+Decode the three source words independently, recover their unique degree-$<N$ polynomials by \cref{prop:rs-parameters}, and interpret their coefficient vectors as tables using \cref{prop:table-isomorphism}.  Check the three fibre distances explicitly.  Finally compare $a(w)b(w)$ with $c(w)$ for every $w\in\B^n$.  All steps are polynomial in $M$ because $N\le M$.
+\end{proof}
+
+As in \cref{sec:ip-decoding}, the round-by-round knowledge state for the final Fiat--Shamir compilation will be treated globally later.  The algebraic extractor needed for the Hadamard relation is simply the unique decoding of the three source commitments.
+
+\subsection{Costs and role in larger relations}
+\label{sec:hadamard-costs}
+
+The Hadamard protocol is more expensive than a single coefficient opening because it must authenticate the scaled polynomial $Q_\gamma$ and three out-of-domain values.  Nevertheless, all checks share one folding backend.
+
+\begin{proposition}[Local verifier work]
+\label{prop:had-local-verifier-work}
+Apart from the folding backend, one queried point $\xi\in L$ requires source values from
+\[
+  w_a,\quad w_c,\quad w_Q,\quad w_A
+\]
+at $\xi$, and one source value $w_b(\xi^{-1})$ for the reversed factor.  From these values the verifier computes
+\[
+  w_b^{\star}(\xi),\quad h(\xi),\quad q_a(\xi),\quad q_Q(\xi),\quad q_c(\xi)
+\]
+with $O(1)$ field operations and three divisions.  The three divisions may be evaluated with one batched inversion per collection of queried points.
+\end{proposition}
+
+\begin{proof}
+The reversal and high-part words are local by \cref{cor:reversal-fibre-local,lem:virtual-high-locality}.  Each DEEP quotient is local by \cref{lem:deep-locality}.  Their denominators depend only on public challenges and the queried point.  Standard batched inversion computes the inverses of all nonzero denominators using one field inversion and linear many multiplications.
+\end{proof}
+
+\begin{remark}[Why Hadamard is the multiplication gate of the framework]
+\label{rem:had-multiplication-gate}
+Linear relations among tables are handled directly by linearity of the encoding and by public linear functionals.  Coordinatewise multiplication is the only nonlinear gate needed to evaluate an ordinary arithmetic circuit pointwise over the Boolean table.  Thus, once $a\had b=c$ can be proved, any fixed pointwise arithmetic expression may be represented by auxiliary wire tables: addition and scalar multiplication are linear, multiplication gates are Hadamard relations, and a final scalar claim is an inner product or public linear functional.  This observation is the bridge from isolated coefficient identities to lookup, permutation, sparse-matrix, and R1CS relations developed below.
+\end{remark}
+
+\begin{remark}[Comparison with degree-two Sumcheck]
+\label{rem:had-vs-sumcheck}
+A conventional proof of the randomly compressed identity
+\[
+  \sum_w\gamma^w a(w)b(w)=\sum_w\gamma^w c(w)
+\]
+can be expressed through a degree-two Sumcheck followed by multilinear openings.  The present construction instead materializes the scaled coefficient polynomial $Q_\gamma$, binds it by DEEP quotients, reduces the bilinear scalar to one middle coefficient, and delegates global low-degree consistency to one Reed--Solomon folding test.  The mathematical tradeoff is therefore explicit: Sumcheck's $n$ recursive round polynomials are replaced by auxiliary low-degree words that can be batched into the same FRI-style proximity argument.  Whether this tradeoff is faster in practice is an implementation question addressed only by controlled benchmarks later in the paper.
+\end{remark}

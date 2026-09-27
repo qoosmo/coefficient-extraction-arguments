@@ -1,0 +1,410 @@
+\section{Non-Interactive Compilation and Post-Quantum Knowledge Soundness}
+\label{sec:post-quantum}
+
+The protocols developed so far are public-coin interactive oracle protocols.  Their algebraic soundness is information theoretic: no discrete-logarithm, pairing, or other number-theoretic assumption is used.  To obtain a succinct non-interactive argument, however, one must replace oracle messages by commitments and public challenges by hash outputs.  This step is cryptographic, and in the presence of a quantum adversary it must be analysed in the quantum random-oracle model (QROM), where the adversary may query the random oracle in superposition \cite{BonehEtAl11}.
+
+This section gives that compilation precisely.  We first encode the protocols of \cref{sec:soundness} as interactive oracle reductions (IORs) with fibre symbols.  We then prove a relaxed round-by-round knowledge statement for partially opened oracle strings.  Finally we invoke, as an external compiler theorem, the post-quantum BCS theorem for IORs of Chiesa, Di, Hu and Zheng \cite{CDHZ25}.  All statements specific to the present protocols are proved here; the only external cryptographic result used in this section is the compiler theorem itself.  This is analogous to the use of correlated agreement in \cref{sec:preliminaries}: the external theorem is quoted with its hypotheses, and the work of this section is to verify those hypotheses for the coefficient-extraction framework.
+
+\subsection{Fibre strings and the committed application relation}
+\label{sec:pq-fibre-strings}
+
+Recall that $L=L_0$ is the smooth multiplicative domain of order $M=2^{n+R}$ and that $L_j=L^{2^j}$ has order $M_j=M/2^j$.  For each $j$ with $M_j\ge 2$ and each $\eta\in L_{j+1}$, fix once and for all one square root $\xi_\eta\in L_j$; the other is $-\xi_\eta$.
+
+\begin{definition}[Fibre string]
+\label{def:pq-fibre-string}
+For a word $u\in\F^{L_j}$ define
+\[
+  \operatorname{fib}_j(u)
+  \in (\F^2)^{L_{j+1}},
+  \qquad
+  \operatorname{fib}_j(u)(\eta)
+  =\bigl(u(\xi_\eta),u(-\xi_\eta)\bigr).
+\]
+For a tuple $\mathbf u=(u_1,\ldots,u_t)$ of words on the same domain, define the packed fibre string
+\[
+  \operatorname{Fib}_j(\mathbf u)(\eta)
+  =\bigl(\operatorname{fib}_j(u_1)(\eta),\ldots,
+         \operatorname{fib}_j(u_t)(\eta)\bigr).
+\]
+\end{definition}
+
+The map $\operatorname{fib}_j$ is a bijection between words on $L_j$ and strings of $M_{j+1}$ fibre symbols.  Moreover, the ordinary Hamming distance between fibre strings is exactly the fibre distance of the underlying words:
+\begin{equation}
+  \Delta\bigl(\operatorname{fib}_j(u),\operatorname{fib}_j(v)\bigr)
+  =\Delta_{\mathrm{fib},j}(u,v).
+  \label{eq:pq-fibre-distance}
+\end{equation}
+Indeed, one fibre symbol differs precisely when the two words differ at at least one of the two points of that fibre.
+
+Packing several original table commitments into one fibre symbol is useful for the non-interactive scheme.  It gives a single semantic Merkle root and, more importantly, makes the relaxed relation below express \emph{common} agreement of all original commitments on the same set of fibres.  This is exactly the agreement structure produced by the correlated-agreement arguments of \cref{sec:heterogeneous-batching,sec:soundness}.
+
+Let $\mathcal R$ be any one of the application relations proved earlier: a linear-functional relation, committed inner product, Hadamard relation, lookup relation, multiset/permutation relation, sparse matrix--vector relation, sparse R1CS relation, or memory-consistency relation.  Let the semantic witness be a tuple of tables
+\[
+  \mathbf f=(f_1,\ldots,f_t),
+  \qquad f_i:\bits\to\F,
+\]
+and let
+\[
+  \mathbf c(\mathbf f)
+  =\bigl(\Enc_T(f_1),\ldots,\Enc_T(f_t)\bigr).
+\]
+
+\begin{definition}[Packed committed relation]
+\label{def:pq-packed-relation}
+The relation $R_{\mathcal R}$ has explicit instance $x$, implicit instance
+\[
+  y\in\Sigma^{M/2},
+  \qquad
+  \Sigma=(\F^2)^t,
+\]
+and witness $\mathbf f$.  It contains $(x,y,\mathbf f)$ exactly when
+\begin{equation}
+  y=\operatorname{Fib}_0\bigl(\mathbf c(\mathbf f)\bigr)
+  \qquad\text{and}\qquad
+  (x,\mathbf f)\in\mathcal R.
+  \label{eq:pq-exact-relation}
+\end{equation}
+For $\delta\in[0,1]$, the relaxed relation $(R_{\mathcal R})_{\le\delta}$ consists of triples $(x,y,\mathbf f)$ with a partial string
+\[
+  y\in(\Sigma\sqcup\{\bot\})^{M/2}
+\]
+such that
+\begin{equation}
+  \Delta\left(
+      y,
+      \operatorname{Fib}_0\bigl(\mathbf c(\mathbf f)\bigr)
+  \right)
+  \le\delta
+  \qquad\text{and}\qquad
+  (x,\mathbf f)\in\mathcal R,
+  \label{eq:pq-relaxed-relation}
+\end{equation}
+where $\bot$ differs from every symbol of $\Sigma$.
+\end{definition}
+
+Thus a relaxed witness gives one set of at least $(1-\delta)M/2$ fibres on which \emph{all} original table commitments agree simultaneously with their extracted Reed--Solomon codewords.  In particular, every individual commitment is within fibre distance $\delta$ of its decoded table, so \cref{eq:pq-relaxed-relation} implies every application relation used in the interactive sections.
+
+\begin{remark}[Separate reusable roots]
+\label{rem:pq-separate-roots}
+The packed commitment is the canonical form used in this section because it minimizes authentication paths and gives the cleanest relaxed relation.  If an application requires separately reusable roots for the individual tables, the same construction can be stated with several implicit input strings; the compiler theorem of \cite{CDHZ25} allows multiple implicit instances.  No algebraic argument changes.  The packed form is sufficient for the theorem proved here and is the form we recommend for benchmarks of a complete proof.
+\end{remark}
+
+\subsection{Bit-string challenges}
+\label{sec:pq-bit-challenges}
+
+The interactive protocols were written with field challenges.  The Fiat--Shamir compiler derives bit strings from a random oracle.  We therefore fix an explicit conversion.
+
+Let $\lambda_{\mathrm{ch}}\ge \lceil\log_2|\F|\rceil$.  Fix a bijection
+\[
+  \operatorname{num}:\{0,\ldots,|\F|-1\}\longrightarrow\F
+\]
+and define
+\[
+  \phi:\{0,1\}^{\lambda_{\mathrm{ch}}}\longrightarrow\F,
+  \qquad
+  \phi(s)=\operatorname{num}\bigl(\operatorname{int}(s)\bmod|\F|\bigr).
+\]
+Also fix a bijection
+\[
+  \operatorname{pos}:\{0,1\}^{n+R}\longrightarrow L.
+\]
+
+\begin{lemma}[Sampling from hash bits]
+\label{lem:pq-sampling}
+For every set $S\subseteq\F$,
+\begin{equation}
+  \Pr_{s\leftarrow\{0,1\}^{\lambda_{\mathrm{ch}}}}
+  [\phi(s)\in S]
+  \le
+  |S|\left(\frac1{|\F|}+2^{-\lambda_{\mathrm{ch}}}\right).
+  \label{eq:pq-field-sampling}
+\end{equation}
+If $q\leftarrow\{0,1\}^{\kappa(n+R)}$ is divided into $\kappa$ consecutive blocks of $n+R$ bits and each block is mapped through $\operatorname{pos}$, the resulting $\kappa$ points are independent and uniform in $L$.
+\end{lemma}
+
+\begin{proof}
+Every $a\in\F$ has at most
+\[
+  \left\lceil\frac{2^{\lambda_{\mathrm{ch}}}}{|\F|}\right\rceil
+  <\frac{2^{\lambda_{\mathrm{ch}}}}{|\F|}+1
+\]
+preimages under $\phi$.  Divide by $2^{\lambda_{\mathrm{ch}}}$ and sum over $a\in S$ to obtain \eqref{eq:pq-field-sampling}.  The second statement follows because applying the bijection $\operatorname{pos}$ independently to each block gives a bijection
+\[
+  \{0,1\}^{\kappa(n+R)}\simeq L^\kappa.
+\]
+\end{proof}
+
+Consequently every root-counting error $b/|\F|$ in \cref{prop:sequential-knowledge-profile} becomes at most
+\begin{equation}
+  b\left(\frac1{|\F|}+2^{-\lambda_{\mathrm{ch}}}\right)
+  \label{eq:pq-lifted-field-error}
+\end{equation}
+when its field challenge is generated from $\lambda_{\mathrm{ch}}$ hash bits.  The final query term $(1-\delta)^\kappa$ is unchanged.
+
+\subsection{The protocol as an interactive oracle reduction}
+\label{sec:pq-ior}
+
+Fix one application protocol after all reductions of the preceding sections have been expanded.  Put every public challenge in chronological order: relation-specific outer challenges, the shared Hadamard challenges when present, the master heterogeneous batching challenge, the FRI folding challenges, and finally the query string.  A challenge that occurs before any substantive prover message is preceded by a fixed one-symbol dummy message.  This does not alter the interactive protocol but puts it in the standard ``message, then public challenge'' form.
+
+Every oracle message is written as a fibre string.  Words on $L_j$ are encoded by $\operatorname{fib}_j$.  Several words sent in the same round are packed componentwise into one symbol.  A fully read scalar message, such as a claimed out-of-domain evaluation or the coefficients of the final polynomial, is represented by a short string that the verifier reads in full.  By padding fixed-length tuples, all messages can be embedded injectively in one finite alphabet; the choice of this encoding affects only byte counts, not the protocol or its soundness.
+
+\begin{definition}[Application IOR]
+\label{def:pq-application-ior}
+Let $\Pi_{\mathcal R}^{\Sigma}$ denote the IOR whose explicit and implicit input is $(x;y)$ for the relation $R_{\mathcal R}$ of \cref{def:pq-packed-relation}.  Its messages are the packed fibre strings and fully read scalar strings of the corresponding interactive protocol.  Every ordinary field challenge is obtained as $\phi(vr_i)$ from a fresh
+\[
+  vr_i\in\{0,1\}^{\lambda_{\mathrm{ch}}},
+\]
+and the final query challenge is a string of length $\kappa(n+R)$ mapped to $L^\kappa$ through $\operatorname{pos}$.  On full strings, the verifier performs exactly the checks of the interactive protocol.  On partial strings it rejects whenever it attempts to read an undefined symbol $\bot$.
+\end{definition}
+
+The output relation is the trivial accepting relation
+\[
+  R_{\mathrm{acc}}=\{(\top,(),w):w\text{ arbitrary}\}.
+\]
+The IOR outputs $(\top,())$ exactly when the interactive verifier accepts.  Hence $\Pi_{\mathcal R}^{\Sigma}$ is an IOR from $R_{\mathcal R}$ to $R_{\mathrm{acc}}$ in the terminology of \cite{CDHZ25}.
+
+\subsection{Partial strings and erasure-stable witness sets}
+\label{sec:pq-erasures}
+
+We now verify the hypothesis needed for quantum Fiat--Shamir extraction.  The compiler does not, in general, recover complete oracle messages from a quantum adversary.  It recovers only those positions that the proof opens.  Therefore the knowledge state must remain meaningful for partial strings.
+
+For a partial fibre string $s$, write $\overline{s}$ for the full string obtained by replacing every $\bot$ by the zero symbol.  For a collection of partial oracle strings in a transcript, define $Z_j$ to be the set of points at level $j$ whose entire dependency cone contains no undefined symbol.  Concretely, a point belongs to $Z_j$ if every fibre symbol required to reconstruct and check that point from the original and auxiliary oracle messages is defined.  Because folding dependencies are unions of fibres, each $Z_j$ is fibre closed in the corresponding domain.
+
+For a candidate codeword $c\in C_j$, let $W_j(c)$ be its full-word witness set from \cref{sec:folding-test}.  Define the erasure-restricted witness set
+\begin{equation}
+  W_j^{\bot}(c)=W_j(c)\cap Z_j,
+  \qquad
+  \operatorname{dens}_j^{\bot}(c)
+  =\frac{|W_j^{\bot}(c)|}{|L_j|}.
+  \label{eq:pq-erasure-witness-set}
+\end{equation}
+Undefined fibres therefore count against the density, exactly as $\bot$ counts as a disagreement in \cref{eq:pq-relaxed-relation}.
+
+\begin{lemma}[Erasure stability]
+\label{lem:pq-erasure-stability}
+The challenge-by-challenge arguments of \cref{prop:sequential-knowledge-profile} remain valid for partial strings when every witness set is replaced by \eqref{eq:pq-erasure-witness-set}.  More precisely:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item Every outer reduction or shared-Hadamard root-counting argument has the same exceptional set of field challenges as in the full-word proof.
+  \item Outside the master batching exceptional set, no candidate codeword has erasure-restricted initial density at least $1-\delta$ unless the partial semantic input together with the decoded tables lies in $(R_{\mathcal R})_{\le\delta}$.
+  \item If a folding challenge is good in the sense of \cref{lem:few-bad-folding-challenges}, then
+  \[
+     W_j^{\bot}(c')\subseteq W_{j-1}^{\bot}(c)
+  \]
+  for the predecessor codeword $c$ reconstructed from a level-$j$ candidate $c'$ by the codeword-chain argument.
+  \item If the verifier accepts a partial transcript after all good challenges, every final query point belongs to $W_\ell^{\bot}(c_\ell)$ for the final codeword $c_\ell$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Fill every undefined entry with zero and run the full-word algebraic proof on the filled words.  Root-counting and correlated-agreement arguments depend only on polynomial degree and on positions at which the relevant words are simultaneously defined and agree; replacing undefined positions cannot create a new defined agreement.  This proves (1).
+
+For (2), correlated agreement applied to a master challenge outside its exceptional set produces one common fibre-closed agreement set $T$ for all protected component words.  Intersect $T$ with the set of fibres on which the semantic input is defined.  If the resulting set has size at least $(1-\delta)M/2$, the decoded original tables satisfy the application relation by the same deterministic witness-lifting argument as in \cref{thm:master-interactive-soundness}, while the packed partial input agrees with their encodings on those fibres.  Hence \eqref{eq:pq-relaxed-relation} holds.  Contrapositively, outside the relaxed relation the erasure-restricted initial density is $<1-\delta$.
+
+For (3), the full-word codeword-chain proof gives $W_j(c')\subseteq W_{j-1}(c)$.  Every symbol needed to check a level-$j$ point is computed from symbols in its predecessor dependency cone, so $Z_j\subseteq Z_{j-1}$ under the natural projection of the fold.  Intersect the full-word inclusion with $Z_j$.
+
+For (4), the partial verifier rejects any query that reads $\bot$.  Thus every accepted query lies in $Z_\ell$.  On its defined values it performs the same checks as the full-word verifier, so the query also lies in $W_\ell(c_\ell)$.
+\end{proof}
+
+\subsection{Relaxed round-by-round knowledge soundness}
+\label{sec:pq-relaxed-rbr}
+
+We use the relaxed round-by-round knowledge notion of Chiesa, Di, Hu and Zheng \cite{CDHZ25}.  Informally, a transcript prefix is assigned a binary knowledge state.  A state equal to one means that the partial implicit input already has an extracted witness for the relaxed relation, or that the transcript has escaped the doomed region of the folding proof.  A public challenge may change a zero state to a one state only with the bounded probability charged to that round.
+
+Let the field-challenge rounds of an application have full-word exceptional-set bounds
+\[
+  b_1,b_2,\ldots,b_m,
+\]
+meaning that after every fixed prior transcript at most $b_i$ field values can cause the $i$-th bad event.  This list includes all outer algebraic reductions, the shared Hadamard fingerprint (represented sequentially by its challenge coordinates), the master batching challenge, and the $\ell$ folding challenges.  Let the last challenge be the $\kappa$ query points.
+
+Define
+\begin{equation}
+  \epsilon_i^{\mathrm{rr}}
+  =b_i\left(\frac1{|\F|}+2^{-\lambda_{\mathrm{ch}}}\right)
+  \quad(1\le i\le m),
+  \qquad
+  \epsilon_{m+1}^{\mathrm{rr}}=(1-\delta)^\kappa.
+  \label{eq:pq-rbr-errors}
+\end{equation}
+
+\begin{theorem}[Relaxed round-by-round decoding knowledge]
+\label{thm:pq-relaxed-rbr}
+Fix $0<\delta\le(1-\rho)/2$ and assume $2N<(1-\delta)M$.  For every application relation $\mathcal R$ covered by \cref{thm:master-interactive-soundness}, the IOR $\Pi_{\mathcal R}^{\Sigma}$ has relaxed round-by-round knowledge soundness for $R_{\mathcal R}$ with per-round errors bounded by \eqref{eq:pq-rbr-errors}.  The extractor associated with the knowledge state is the unique Reed--Solomon decoder of \cref{def:application-decoder}, applied to the packed semantic input after filling undefined positions arbitrarily; whenever the state certifies knowledge, the resulting tables form a witness for $(R_{\mathcal R})_{\le\delta}$.
+\end{theorem}
+
+\begin{proof}
+Use the doomed-prefix state of \cref{cor:round-indexed-decoding-state}, replacing every full witness set by its erasure-restricted version from \cref{eq:pq-erasure-witness-set}.  By \cref{lem:pq-erasure-stability}, a false relaxed semantic state cannot leave the doomed region except through one of the same bounded exceptional sets as in the full-word argument.  For a field challenge, \cref{lem:pq-sampling} converts a set of at most $b_i$ bad field values into the first bound of \eqref{eq:pq-rbr-errors}.
+
+If all field and folding challenges remain good, the final erasure-restricted witness-set density is strictly below $1-\delta$.  By \cref{lem:pq-erasure-stability}(4), acceptance requires every one of the $\kappa$ independent uniform query points to lie in that set.  The probability is therefore at most $(1-\delta)^\kappa$ by \cref{lem:independent-uniform-queries}.
+
+If the state leaves the doomed region outside these events, the common agreement set obtained by the master batch has relative size at least $1-\delta$ and consists only of defined fibres.  Unique decoding gives the semantic tables; the relation-specific witness-lifting theorem gives $(x,\mathbf f)\in\mathcal R$; and the common agreement gives \eqref{eq:pq-relaxed-relation}.  This is exactly a witness for $(R_{\mathcal R})_{\le\delta}$.
+\end{proof}
+
+Define the single round-by-round parameter
+\begin{equation}
+  \epsilon_{\mathrm{rr}}(\delta)
+  =\max\left\{
+      \max_{1\le i\le m}
+      b_i\left(\frac1{|\F|}+2^{-\lambda_{\mathrm{ch}}}\right),
+      (1-\delta)^\kappa
+    \right\}.
+  \label{eq:pq-epsilon-rr}
+\end{equation}
+Unlike the overall interactive error of \cref{eq:master-total-soundness}, the quantity \eqref{eq:pq-epsilon-rr} is a \emph{maximum} over rounds.  This is the parameter consumed by the post-quantum Fiat--Shamir compiler.
+
+\subsection{Salted Merkle commitments and the BCS compiler}
+\label{sec:pq-bcs}
+
+We now recall the exact external theorem used for compilation.  A salted Merkle commitment to a string $a=(a_1,\ldots,a_T)$ samples an independent salt for every leaf, hashes the pair $(a_i,\mathrm{salt}_i)$ at each leaf, and hashes pairs of child nodes up the tree.  The root is the commitment.  An opening contains the value, its salt, and the authentication path.  The salts are essential in the post-quantum multi-extraction theorem of \cite{CDHZ25}.
+
+The BCS transformation \cite{BenSassonChiesaSpooner16} replaces every oracle message of an IOR by such a Merkle root.  Fiat--Shamir challenges are obtained by hashing the explicit instance, the semantic input root, all message roots produced so far, and fresh round salts.  The non-interactive proof contains the roots, the salts required by the compiler, all fully read messages, and authenticated openings of every oracle position queried by the IOR verifier.
+
+For completeness, we state the specialization of the compiler theorem that we use.  The theorem itself is quoted, not reproved.
+
+\begin{theorem}[Post-quantum BCS compiler for IORs, specialised \cite{CDHZ25}]
+\label{thm:pq-cdhz}
+Let $\Pi$ be a $\nu$-round IOR from a relation $R$ with implicit input to $R_{\mathrm{acc}}$.  Suppose $\Pi$ has relaxed round-by-round knowledge error at most $\epsilon_{\mathrm{rr}}(\delta)$, all public challenge strings have length at least $\lambda_{\min}$, and every implicit or oracle string has length at most $l_{\max}$.  Let $q_V$ be the number of random-oracle queries made by the compiled verifier, $q_s$ the number of string positions read by the IOR verifier, and let $\lambda_H$ be the Merkle-hash output length.  For a quantum adversary making at most $Q$ random-oracle queries, the salted-BCS compilation admits a polynomial-time straightline quantum extractor.  Its simulation error is zero, its commitment-commutativity error satisfies
+\[
+  \epsilon_{\mathrm{com}}(q)
+  \le \frac{240(q+1)}{2^{\lambda_H}},
+\]
+and its extraction error is bounded by
+\begin{align}
+ \epsilon_{\mathrm{ext}}(Q)
+ \le{}&320(Q+\nu+1)(Q+\nu)\epsilon_{\mathrm{rr}}(\delta)
+      +\frac{4(Q+\nu+1)\nu}{2^{\lambda_{\min}}}
+ \notag\\
+ &+\frac{32l_{\max}
+      +1280Q(2Q+1)^2
+      +128q_s\lceil\log_2 l_{\max}\rceil}{2^{\lambda_H}}
+ \notag\\
+ &+\frac{960(Q+1)T_1^2
+      +480q_V^2(Q+\nu+q_V+2)}{2^{\lambda_H}},
+ \label{eq:pq-cdhz-bound}
+\end{align}
+where
+\[
+  T_1=Q+1+q_V+\nu+q_{\mathrm{CR}}.
+\]
+Here $q_{\mathrm{CR}}$ is the random-oracle query cost of deciding the relaxed committed relation.  Except with probability \eqref{eq:pq-cdhz-bound}, whenever the compiled verifier accepts, the extractor outputs a partial committed witness belonging to the relaxed committed relation $\mathrm{CR}^c[R,\delta]$.
+\end{theorem}
+
+The constants in \cref{thm:pq-cdhz} are those of the 2 March 2026 version of \cite{CDHZ25}.  We use the theorem only through the displayed bound and its extraction conclusion.
+
+\subsection{Post-quantum knowledge soundness of coefficient-extraction arguments}
+\label{sec:pq-main-theorem}
+
+We can now combine the paper-specific relaxed round-by-round theorem with the external compiler.
+
+\begin{theorem}[Post-quantum straightline knowledge soundness]
+\label{thm:pq-main}
+Let $\mathcal R$ be any application relation covered by \cref{thm:master-interactive-soundness}, and let $\Pi_{\mathcal R}^{\Sigma}$ be the IOR of \cref{def:pq-application-ior}.  Fix
+\[
+  0<\delta\le\frac{1-\rho}{2},
+  \qquad
+  2N<(1-\delta)M.
+\]
+Let $\nu$, $\lambda_{\min}$, $l_{\max}$, $q_s$, $q_V$ and $q_{\mathrm{CR}}$ denote the parameters of its salted-BCS compilation, and let $\epsilon_{\mathrm{rr}}(\delta)$ be \eqref{eq:pq-epsilon-rr}.  Then, in the QROM, the compiled non-interactive coefficient-extraction argument has post-quantum straightline knowledge soundness with extraction error bounded by \eqref{eq:pq-cdhz-bound}.
+
+In particular, for every quantum adversary making at most $Q$ random-oracle queries and outputting a semantic Merkle root, an explicit application instance, and an accepting proof, except with probability $\epsilon_{\mathrm{ext}}(Q)$ the extractor outputs
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item a partial packed fibre string $y$ whose defined positions have accepting Merkle openings under that root;
+  \item a tuple of tables $\mathbf f=(f_1,\ldots,f_t)$;
+  \item auxiliary commitment trapdoor data required by the committed relation,
+\end{enumerate}
+such that
+\begin{equation}
+  \Delta\left(
+      y,
+      \operatorname{Fib}_0(\Enc_T(f_1),\ldots,\Enc_T(f_t))
+  \right)
+  \le\delta
+  \label{eq:pq-extracted-distance}
+\end{equation}
+and $(x,\mathbf f)\in\mathcal R$.
+\end{theorem}
+
+\begin{proof}
+By \cref{thm:pq-relaxed-rbr}, $\Pi_{\mathcal R}^{\Sigma}$ satisfies the relaxed round-by-round knowledge hypothesis of \cref{thm:pq-cdhz} with parameter \eqref{eq:pq-epsilon-rr}.  Apply \cref{thm:pq-cdhz}.  Its extractor outputs a witness in the relaxed committed relation associated with $R_{\mathcal R}$.  Unfolding \cref{def:pq-packed-relation} gives exactly \eqref{eq:pq-extracted-distance} and $(x,\mathbf f)\in\mathcal R$.
+\end{proof}
+
+This theorem is the precise sense in which the framework is post-quantum.  Sumcheck itself was never the source of a quantum assumption: it is an information-theoretic protocol.  What the coefficient-extraction framework changes is the algebraic reduction.  The relations of this paper are reduced directly to Reed--Solomon proximity and then compiled using only hash-based commitments and the QROM Fiat--Shamir theorem above.  No pairing, elliptic-curve discrete logarithm, or structured reference string appears in the construction.
+
+\subsection{Binding of the extracted semantic state}
+\label{sec:pq-binding}
+
+The relaxed extractor works one accepting proof at a time.  We therefore record the deterministic binding consequence needed to interpret the extracted tables as the state committed by the semantic root.
+
+\begin{lemma}[Uniqueness under one semantic root]
+\label{lem:pq-root-binding}
+Assume $\delta\le(1-\rho)/2$.  Let the same semantic Merkle root admit two relaxed extracted witnesses
+\[
+  (y,\mathbf f,\mathrm{td}),
+  \qquad
+  (y',\mathbf f',\mathrm{td}')
+\]
+for possibly different explicit claims, each satisfying \eqref{eq:pq-extracted-distance}.  If $\mathbf f\ne\mathbf f'$, then the two trapdoors contain accepting openings of one fibre position under the same root to different packed symbols.  Hence one can compute a collision in the Merkle random oracle.
+\end{lemma}
+
+\begin{proof}
+Let $D$ and $D'$ be the sets of fibre positions at which $y$ and $y'$ respectively agree with the packed codewords of $\mathbf f$ and $\mathbf f'$.  Then
+\[
+  |D|,|D'|\ge(1-\delta)M/2,
+\]
+so
+\[
+  |D\cap D'|\ge(1-2\delta)M/2\ge \rho M/2=N/2.
+\]
+If the two packed symbols agreed at every fibre of $D\cap D'$, then every component pair of Reed--Solomon codewords would agree on the at least $N$ points contained in those fibres.  Degree-$<N$ uniqueness would imply $\Enc_T(f_i)=\Enc_T(f_i')$ for every $i$, hence $f_i=f_i'$ by \cref{prop:table-isomorphism}.  This contradicts $\mathbf f\ne\mathbf f'$.  Therefore there is a fibre $\eta\in D\cap D'$ with $y(\eta)\ne y'(\eta)$.  Both openings are accepted under the same Merkle root, so tracing their authentication paths upward yields a collision at the first node where the two paths merge.
+\end{proof}
+
+Thus, except for the hash-collision event already accounted for by the compiler, one semantic root determines at most one decoded application state within the unique-decoding radius.
+
+\subsection{Parameter consequences}
+\label{sec:pq-parameters}
+
+The dominant QROM term in \eqref{eq:pq-cdhz-bound} is typically
+\begin{equation}
+  320(Q+\nu+1)(Q+\nu)\epsilon_{\mathrm{rr}}(\delta),
+  \label{eq:pq-dominant-term}
+\end{equation}
+so the interactive query error must be set substantially below the desired non-interactive security level.  This is a compiler loss, not an additional algebraic failure of coefficient extraction.
+
+For the recommended unique-decoding rate $\rho=1/4$ and $\delta=3/8$,
+\[
+  (1-\delta)^\kappa=(5/8)^\kappa.
+\]
+If the query term dominates \eqref{eq:pq-epsilon-rr}, increasing $\kappa$ by one multiplies it by $5/8$.  For a target extraction error $2^{-\lambda}$ against a fixed query budget $Q$, a conservative first choice is therefore to select $\kappa$ so that
+\begin{equation}
+  320(Q+\nu+1)(Q+\nu)(5/8)^\kappa
+  \le 2^{-\lambda-1},
+  \label{eq:pq-kappa-choice}
+\end{equation}
+and then choose $\lambda_{\mathrm{ch}}$ and $\lambda_H$ so that all remaining terms of \eqref{eq:pq-cdhz-bound} sum to at most $2^{-\lambda-1}$.
+
+The field size must simultaneously make every algebraic round error in \eqref{eq:pq-epsilon-rr} negligible.  If
+\[
+  b_{\max}=\max_i b_i,
+\]
+it is enough to require
+\begin{equation}
+  b_{\max}
+  \left(\frac1{|\F|}+2^{-\lambda_{\mathrm{ch}}}\right)
+  \ll (1-\delta)^\kappa.
+  \label{eq:pq-field-choice}
+\end{equation}
+For large heterogeneous applications $b_{\max}$ is often the master-batching quantity $(s-1)M$; this is why the challenge field, rather than only the base arithmetic field, may need to be a substantial extension.
+
+We postpone concrete parameter tables until the implementation section, where $\nu$, $s$, $q_s$ and $q_V$ can be measured from the actual transcript layout.  The formulas above are the exact constraints that the Rust parameter tool must evaluate.
+
+\subsection{What has and has not been proved}
+\label{sec:pq-scope}
+
+It is useful to separate three statements that are sometimes conflated.
+
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item \textbf{Interactive algebraic soundness.}  This is proved internally in \cref{sec:soundness}; it is information theoretic apart from the quoted Reed--Solomon correlated-agreement theorem.
+  \item \textbf{Relaxed round-by-round decoding knowledge.}  This is proved internally in \cref{thm:pq-relaxed-rbr}; it shows that the interactive protocol has exactly the state structure required by the non-interactive compiler, including partial oracle strings.
+  \item \textbf{Post-quantum Fiat--Shamir extraction.}  This follows by applying the external QROM compiler theorem \cref{thm:pq-cdhz}.  We do not reprove that general quantum theorem.
+\end{enumerate}
+
+Accordingly, the post-quantum claim of this paper is not based on the informal slogan that ``hashes are post-quantum.''  It is a theorem obtained by verifying the hypotheses of a specific QROM knowledge-sound compiler.  Conversely, the theorem is only as strong as that compiler model: the construction analysed here is the salted-BCS transcript described above, with domain-separated random-oracle calls and the exact message/challenge ordering used by the IOR.  A Rust implementation claiming this theorem must conform to that transcript; conformance is therefore a testable implementation obligation rather than a presentation detail.

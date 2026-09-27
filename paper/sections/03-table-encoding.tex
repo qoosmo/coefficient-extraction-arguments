@@ -1,0 +1,263 @@
+\section{Table-Form Kronecker Encoding}
+\label{sec:table-encoding}
+
+The protocols in this paper commit directly to vectors indexed by the Boolean hypercube.  The corresponding univariate polynomial is obtained by using the integer index of a Boolean point as the exponent.  This section defines that encoding, relates it precisely to the canonical and Lagrange representations of multilinear polynomials from \cref{sec:preliminaries-multilinear}, and records the commitment properties used throughout the paper.
+
+\subsection{The table polynomial}
+\label{sec:table-polynomial}
+
+Let $t:\B^n\to\F$ be a table.  As in \cref{sec:preliminaries-bits}, we identify a Boolean point
+\[
+  w=(w_1,\ldots,w_n)\in\B^n
+\]
+with the integer
+\[
+  w=\sum_{i=1}^{n}w_i2^{i-1}\in[0,N-1].
+\]
+Thus we write $t(w)$ interchangeably for the value at the bit vector and at its integer index.
+
+\begin{definition}[Table polynomial]
+\label{def:table-polynomial}
+For a table $t:\B^n\to\F$, its \emph{table polynomial} is
+\begin{equation}
+  V_t(X)
+  \defeq
+  \sum_{w=0}^{N-1}t(w)X^w
+  \in\F[X]_{<N}.
+  \label{eq:table-polynomial}
+\end{equation}
+\end{definition}
+
+The construction in \cref{def:table-polynomial} is the Kronecker encoding of the length-$N$ vector $(t(0),\ldots,t(N-1))$: the entries of the vector are used verbatim as the coefficients of a univariate polynomial.  No interpolation on the Boolean cube is involved in the definition of $V_t$.
+
+\begin{proposition}[Table encoding is a linear isomorphism]
+\label{prop:table-isomorphism}
+The map
+\[
+  \mathcal K_T:\F^{\B^n}\longrightarrow\F[X]_{<N},
+  \qquad
+  t\longmapsto V_t,
+\]
+is an $\F$-linear isomorphism.  Its inverse maps
+\[
+  P(X)=\sum_{j=0}^{N-1}p_jX^j
+\]
+to the table $t_P$ defined by $t_P(j)=p_j$.
+\end{proposition}
+
+\begin{proof}
+Linearity follows coefficientwise from \eqref{eq:table-polynomial}.  Every polynomial in $\F[X]_{<N}$ has a unique coefficient vector $(p_0,\ldots,p_{N-1})$, and therefore a unique table $t_P$ with $t_P(j)=p_j$.  For this table,
+\[
+  V_{t_P}(X)=\sum_{j=0}^{N-1}p_jX^j=P(X).
+\]
+Conversely, the coefficient of $X^j$ in $V_t$ is exactly $t(j)$, so $t_{V_t}=t$.  Thus the two maps are inverse linear maps.
+\end{proof}
+
+\begin{remark}[No distinction between a vector and its table polynomial]
+\label{rem:vector-table-polynomial}
+Whenever a vector $a=(a_0,\ldots,a_{N-1})\in\F^N$ is indexed by $[0,N-1]$, we may regard it as the table $a:\B^n\to\F$ under the fixed binary indexing and write
+\[
+  V_a(X)=\sum_{j=0}^{N-1}a_jX^j.
+\]
+This convention will be used for witness vectors, lookup columns, matrix-derived vectors, and intermediate pointwise-arithmetic wires.  The encoding depends only on the ordered vector, not on an a priori multivariate polynomial.
+\end{remark}
+
+\subsection{Relation with multilinear polynomial representations}
+\label{sec:table-vs-multilinear}
+
+The table polynomial $V_t$ should not be confused with the canonical-coordinate Kronecker polynomial of the multilinear extension $\widetilde t$.  Both are degree-$<N$ univariate polynomials, but their coefficients represent different coordinate systems.
+
+Recall from \cref{prop:boolean-interpolation} that every table $t:\B^n\to\F$ has a unique multilinear extension
+\[
+  \widetilde t(z)
+  =\sum_{w\in\B^n}t(w)\eq(w,z).
+\]
+The family
+\begin{equation}
+  e_w(x_1,\ldots,x_n)
+  \defeq
+  \eq(w,x)
+  =\prod_{i=1}^{n}\bigl((1-w_i)(1-x_i)+w_ix_i\bigr)
+  \label{eq:boolean-lagrange-basis}
+\end{equation}
+is the Boolean Lagrange basis of the multilinear space over $\F$.
+
+\begin{proposition}[Table values are Lagrange coordinates]
+\label{prop:table-lagrange-coordinates}
+For every table $t:\B^n\to\F$,
+\begin{equation}
+  \widetilde t(x)
+  =\sum_{w\in\B^n}t(w)e_w(x).
+  \label{eq:mle-lagrange-expansion}
+\end{equation}
+Consequently, the coordinate vector of $\widetilde t$ in the Boolean Lagrange basis $(e_w)_{w\in\B^n}$ is exactly the table vector $(t(w))_{w\in\B^n}$, and $V_t$ is the univariate Kronecker encoding of those Lagrange coordinates.
+\end{proposition}
+
+\begin{proof}
+Equation \eqref{eq:mle-lagrange-expansion} is the definition of the multilinear extension in \eqref{eq:mle-definition}.  The Boolean delta property \cref{lem:eq-delta} implies that the polynomials $e_w$ interpolate the standard coordinate vectors on $\B^n$, hence form the Lagrange basis.  Therefore the coefficient of $e_w$ in \eqref{eq:mle-lagrange-expansion} is $t(w)$.  By \cref{def:table-polynomial}, these same coordinates are the coefficients of $V_t$.
+\end{proof}
+
+Now let $f\in\M$ be written in the canonical basis of \cref{prop:canonical-basis} as
+\[
+  f=\sum_{j=0}^{N-1}\alpha_jm_j.
+\]
+Its canonical-coordinate Kronecker polynomial is
+\begin{equation}
+  U_f(X)
+  \defeq
+  \sum_{j=0}^{N-1}\alpha_jX^j.
+  \label{eq:canonical-kronecker-polynomial}
+\end{equation}
+Its table polynomial, by contrast, is
+\[
+  V_f(X)
+  \defeq
+  \sum_{b=0}^{N-1}f(b)X^b.
+\]
+The two coefficient vectors are related by the Boolean zeta and M\"obius transforms from \cref{lem:mobius}.
+
+\begin{proposition}[Canonical and table Kronecker polynomials]
+\label{prop:canonical-table-kronecker}
+Let $f\in\M$ have canonical coordinates $(\alpha_j)_{j=0}^{N-1}$.  Then
+\begin{equation}
+  [X^b]V_f
+  =f(b)
+  =\sum_{j\preceq b}\alpha_j,
+  \label{eq:table-from-canonical}
+\end{equation}
+and
+\begin{equation}
+  [X^j]U_f
+  =\alpha_j
+  =\sum_{c\preceq j}(-1)^{\wt(j)-\wt(c)}[X^c]V_f.
+  \label{eq:canonical-from-table}
+\end{equation}
+In particular, $U_f$ and $V_f$ generally differ even though both belong to $\F[X]_{<N}$.
+\end{proposition}
+
+\begin{proof}
+The first equality in \eqref{eq:table-from-canonical} is the definition of $V_f$, and the second is \eqref{eq:zeta-transform}.  Equation \eqref{eq:canonical-from-table} is \eqref{eq:mobius-transform} after substituting $f(c)=[X^c]V_f$.  No further argument is required.
+\end{proof}
+
+\begin{remark}[Why table form is the default in this paper]
+\label{rem:why-table-form}
+For a protocol whose witness is already represented by values on $\B^n$, the coefficients of $V_t$ are available directly.  In particular, committing to $V_t$ does not require first applying the M\"obius transform \eqref{eq:mobius-transform}.  More importantly, later relations such as pointwise products, lookup columns, permutations, and sparse-matrix streams are naturally relations between table entries.  The table polynomial therefore gives one uniform univariate representation for all of them.
+\end{remark}
+
+\subsection{The Reed--Solomon table commitment}
+\label{sec:table-commitment}
+
+Fix the common parameters of \cref{sec:preliminaries-parameters}: a smooth multiplicative domain $L\le\Fq^\times$ of order $M\ge N$ and the base code
+\[
+  C_0=\RS_{\F}[L,N].
+\]
+
+\begin{definition}[Table-form Kronecker commitment]
+\label{def:table-commitment}
+For a table $t:\B^n\to\F$, define its oracle commitment by
+\begin{equation}
+  \Enc_T(t)
+  \defeq
+  \ev_L(V_t)
+  =\bigl(V_t(\xi)\bigr)_{\xi\in L}
+  \in C_0.
+  \label{eq:table-commitment}
+\end{equation}
+In the interactive-oracle model, the word $\Enc_T(t)$ is the commitment oracle.  A later non-interactive compilation will replace the oracle by a hash/Merkle commitment to its entries.
+\end{definition}
+
+\begin{proposition}[Commitment is a linear bijection onto the base code]
+\label{prop:table-commitment-bijection}
+The map
+\[
+  \Enc_T:\F^{\B^n}\longrightarrow C_0
+\]
+is an $\F$-linear bijection.
+\end{proposition}
+
+\begin{proof}
+By \cref{prop:table-isomorphism}, $t\mapsto V_t$ is an $\F$-linear bijection from $\F^{\B^n}$ onto $\F[X]_{<N}$.  By \cref{prop:rs-parameters}(1), evaluation on $L$ is an $\F$-linear bijection from $\F[X]_{<N}$ onto $C_0$.  Their composition is therefore an $\F$-linear bijection.
+\end{proof}
+
+The previous proposition gives a canonical decoder from an exact codeword to a table: if $c\in C_0$, let $P_c\in\F[X]_{<N}$ be its unique representing polynomial and define
+\begin{equation}
+  \operatorname{Tab}(c)(j)
+  \defeq
+  [X^j]P_c.
+  \label{eq:codeword-table-decoder}
+\end{equation}
+Then $\Enc_T(\operatorname{Tab}(c))=c$.
+
+For soundness we need the stronger statement that a word sufficiently close to the code determines at most one committed table.
+
+\begin{proposition}[Unique table determined by a nearby word]
+\label{prop:unique-table-near-word}
+Let $0\le\delta\le\delta_*=(1-\rho)/2$, and let $w\in\F^L$.  There is at most one table $t:\B^n\to\F$ satisfying either of the following conditions:
+\begin{align}
+  \Delta\bigl(w,\Enc_T(t)\bigr)&\le\delta,
+  \label{eq:table-near-hamming}\\
+  \Delta_{\mathrm{fib}}\bigl(w,\Enc_T(t)\bigr)&\le\delta.
+  \label{eq:table-near-fibre}
+\end{align}
+\end{proposition}
+
+\begin{proof}
+For \eqref{eq:table-near-hamming}, \cref{prop:rs-parameters}(3) implies that there is at most one codeword $c\in C_0$ within distance $\delta$ of $w$.  By \cref{prop:table-commitment-bijection}, each codeword in $C_0$ corresponds to exactly one table, so at most one such $t$ exists.
+
+For \eqref{eq:table-near-fibre}, \cref{lem:hamming-fibre} gives
+\[
+  \Delta\bigl(w,\Enc_T(t)\bigr)
+  \le
+  \Delta_{\mathrm{fib}}\bigl(w,\Enc_T(t)\bigr)
+  \le\delta.
+\]
+Thus any table satisfying the fibre-distance condition also satisfies the Hamming-distance condition, and uniqueness follows from the first part.
+\end{proof}
+
+\begin{proposition}[Base-field consistency]
+\label{prop:table-basefield-consistency}
+If $t:\B^n\to\Fq$, then
+\[
+  \Enc_T(t)\in\Fq^L.
+\]
+Conversely, let $w\in\Fq^L$ and suppose that for some table $t:\B^n\to\F$,
+\begin{equation}
+  \Delta\bigl(w,\Enc_T(t)\bigr)
+  <\frac12\left(1-\frac{N-1}{M}\right).
+  \label{eq:table-basefield-radius}
+\end{equation}
+Then $t$ takes values in $\Fq$.
+\end{proposition}
+
+\begin{proof}
+If $t(w)\in\Fq$ for every $w$, then all coefficients of $V_t$ lie in $\Fq$.  Since $L\subseteq\Fq^\times$, every evaluation $V_t(\xi)$ also lies in $\Fq$, proving the first statement.
+
+For the converse, put $c=\Enc_T(t)\in C_0$.  Condition \eqref{eq:table-basefield-radius} and \cref{lem:basefield-decoding} imply that the representing polynomial $P_c$ lies in $\Fq[X]_{<N}$.  By injectivity of evaluation and the definition of the commitment,
+\[
+  P_c=V_t.
+\]
+Hence every coefficient $[X^j]V_t=t(j)$ lies in $\Fq$.
+\end{proof}
+
+\subsection{Commit once, interpret many relations}
+\label{sec:table-commitment-interpretation}
+
+A central reason for using \cref{def:table-commitment} is that later protocols do not change the commitment format.  The word
+\[
+  w_t=\Enc_T(t)=\ev_L(V_t)
+\]
+commits simultaneously to the ordered vector $t$, to the Boolean table whose multilinear extension is $\widetilde t$, and to the degree-$<N$ univariate polynomial $V_t$.  Different proof statements merely apply different algebraic functionals to the same coefficients.
+
+The next sections develop these functionals systematically.  In particular:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item multilinear evaluation $\widetilde t(z)$ is a coefficient of $V_t$ multiplied by a public product-form kernel;
+  \item an arbitrary inner product $\ip{a}{b}$ is a coefficient of $V_a$ multiplied by the reversal of $V_b$;
+  \item pointwise products are reduced to randomly weighted inner products;
+  \item lookup, permutation, sparse linear algebra, and R1CS are then assembled from the same table commitments and these basic relations.
+\end{enumerate}
+No additional encoding is introduced for these applications.  This common representation is what allows heterogeneous relations to be batched later into a single Reed--Solomon proximity test.
+
+\begin{remark}[Commitment versus proof of a relation]
+\label{rem:commitment-not-proof}
+The map $\Enc_T$ by itself only binds a table to a Reed--Solomon codeword.  It does not prove any evaluation, inner-product, Hadamard, lookup, or R1CS relation.  Those statements require the coefficient-extraction identities and soundness arguments developed in the following sections.  Keeping this distinction explicit will be important when the interactive protocols are later compiled with hash commitments.
+\end{remark}

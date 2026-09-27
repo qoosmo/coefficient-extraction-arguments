@@ -1,0 +1,264 @@
+\section{Introduction}
+\label{sec:introduction}
+
+\subsection{From Sumcheck to coefficient extraction}
+
+The Sumcheck protocol of Lund, Fortnow, Karloff, and Nisan is one of the basic algebraic reductions underlying modern succinct proof systems~\cite{LFKN92}.  Given a low-degree polynomial in several variables, Sumcheck reduces a claim about its sum over the Boolean hypercube to a single evaluation at a verifier-chosen random point.  In the multilinear setting the protocol is especially natural: a polynomial in $n$ variables is represented by $N=2^n$ field elements, each round eliminates one variable, and the prover performs a recursive sequence of folds.  This structure is used directly in general-purpose systems such as Spartan~\cite{Setty20} and HyperPlonk~\cite{HyperPlonk23}, in lookup-oriented systems such as Lasso and Jolt~\cite{Lasso23,Jolt23}, and in recent zkVM-oriented memory arguments~\cite{TwistShout26}.  It is also tightly coupled to several multilinear polynomial-commitment constructions based on error-correcting codes, including BaseFold and DeepFold~\cite{BaseFold24,DeepFold25}.
+
+The cryptographic role of Sumcheck should be stated carefully.  Sumcheck itself is an information-theoretic interactive protocol; it does not rely on elliptic curves, pairings, discrete logarithms, or any other number-theoretic assumption that is known to be vulnerable to quantum computers.  The post-quantum issue arises in the surrounding commitment and compilation layers.  A multilinear polynomial IOP may be compiled with an algebraic polynomial commitment such as KZG, or with a transparent code-based commitment and a hash-based oracle compiler.  The latter route is attractive for post-quantum arguments because Reed--Solomon proximity tests such as FRI use field arithmetic, error-correcting codes, and hash commitments rather than pairings~\cite{FRI18,WHIR24}.  Existing hash-based multilinear systems therefore combine two different mechanisms: Sumcheck carries the multilinear algebraic relation, while folding/proximity testing certifies low degree and commitment consistency.
+
+This paper asks whether that division of labor is always necessary.  Our starting point is a classical coefficient identity.  Let $n\ge 1$, let $N=2^n$, and for vectors
+\[
+  a=(a_0,\ldots,a_{N-1}),\qquad
+  b=(b_0,\ldots,b_{N-1})\in \F^N
+\]
+define the univariate generating polynomials
+\[
+  V_a(X)=\sum_{j=0}^{N-1}a_jX^j,
+  \qquad
+  V_b^{\rev}(X)=\sum_{j=0}^{N-1}b_jX^{N-1-j}.
+\]
+Then
+\begin{equation}
+  \ip{a}{b}
+  =\sum_{j=0}^{N-1}a_jb_j
+  =\coeff{N-1}{V_a(X)V_b^{\rev}(X)}.
+  \label{eq:intro-ip-coeff}
+\end{equation}
+The identity is elementary.  Its relevance to proof systems comes from the observation that a coefficient claim can be turned into a low-degree polynomial identity with exactly the degree bound naturally enforced by a Reed--Solomon code.  Namely, for $U,K\in\polylt{N}$ and $v\in\F$,
+\begin{equation}
+  v=\coeff{N-1}{U(X)K(X)}
+  \quad\Longleftrightarrow\quad
+  XU(X)K(X)=A(X)+vX^N+X^{N+1}H(X)
+  \label{eq:intro-master-identity}
+\end{equation}
+for unique polynomials $A,H\in\polylt{N}$ obtained by splitting the product around degree $N$.  The factor $X$ moves the selected coefficient from degree $N-1$ to degree $N$; consequently both auxiliary polynomials retain the power-of-two degree bound $N$.  If $U$, $A$, and the necessary transforms of $K$ are represented as Reed--Solomon words, the value of $H$ at a queried domain point is determined locally by~\eqref{eq:intro-master-identity}.  Thus $H$ need not be committed separately: it is a virtual word.  After a random linear combination of the participating words, one FRI-style proximity test can simultaneously enforce their low-degree structure and the coefficient identity.
+
+The resulting viewpoint is different from a Sumcheck protocol.  Sumcheck proves a hypercube sum by recursively eliminating variables,
+\[
+  n\text{-variate claim}
+  \longrightarrow
+  (n-1)\text{-variate claim}
+  \longrightarrow\cdots\longrightarrow
+  \text{evaluation at a random point}.
+\]
+Coefficient extraction instead transforms the relation into a static identity among univariate low-degree objects,
+\[
+  \text{algebraic relation}
+  \longrightarrow
+  \text{selected coefficient of a product}
+  \longrightarrow
+  \text{Reed--Solomon proximity}.
+\]
+The point is not that every use of Sumcheck should be replaced.  Sumcheck is exceptionally efficient, often has a linear-time prover, and remains the right abstraction in many systems.  The question is structural: which relations normally expressed through Sumcheck already have coefficient-extraction forms that can be checked directly by the same FRI machinery used by the commitment layer?  For those relations, the multilinear reduction and the proximity argument need not remain separate protocols.
+
+\subsection{Kronecker encodings and succinct kernels}
+
+Our notation follows the multilinear-polynomial convention used in~\cite{MkhidaIguider26}.  We write $\Fq$ for a finite field, $n\in\N$ for the number of variables, $N=2^n$, and
+\[
+  \M\subseteq \Fq[x_1,\ldots,x_n]
+\]
+for the $N$-dimensional $\Fq$-vector space of multilinear polynomials.  For $j\in[0,N-1]$ with binary decomposition
+\[
+  j=\sum_{i=1}^{n}j_i2^{i-1},\qquad j_i\in\{0,1\},
+\]
+the canonical monomial is
+\[
+  m_j=\prod_{i=1}^{n}x_i^{j_i}.
+\]
+When a multilinear polynomial is represented by its table on $\B^n$, we identify the bit vector $(j_1,\ldots,j_n)$ with the corresponding integer $j$ and write
+\begin{equation}
+  V_f(X)=\sum_{j=0}^{N-1}f(j)X^j.
+  \label{eq:intro-table-encoding}
+\end{equation}
+This is simply a Kronecker encoding of the length-$N$ table.  It turns table entries into coefficients of one univariate polynomial without a M\"obius transform.
+
+The first important special case of~\eqref{eq:intro-ip-coeff} is multilinear evaluation.  Let $\widetilde f$ be the multilinear extension of a table $f:\B^n\to\F$.  For $z=(z_1,\ldots,z_n)\in\F^n$, define
+\begin{equation}
+  E_z^{\rev}(X)
+  =\prod_{i=1}^{n}\left(z_i+(1-z_i)X^{2^{i-1}}\right).
+  \label{eq:intro-eval-kernel}
+\end{equation}
+The coefficient of $X^{N-1-j}$ in $E_z^{\rev}$ is the Boolean equality polynomial $\eq(j,z)$, and therefore
+\begin{equation}
+  \widetilde f(z)=\coeff{N-1}{V_f(X)E_z^{\rev}(X)}.
+  \label{eq:intro-evaluation-extraction}
+\end{equation}
+The verifier never materializes the $N$ coefficients of $E_z^{\rev}$: at a point $\xi$, the product in~\eqref{eq:intro-eval-kernel} is evaluated in $O(n)$ field operations.  This motivates a useful abstraction.  A family of vectors $p_\theta\in\F^N$ is a \emph{succinct kernel family} if its reversed generating polynomial
+\[
+  K_\theta(X)=\sum_{j=0}^{N-1}(p_\theta)_jX^{N-1-j}
+\]
+can be evaluated at verifier query points in $\operatorname{polylog}(N)$ field operations.  Every such family gives a public linear functional
+\[
+  \ip{f}{p_\theta}=\coeff{N-1}{V_fK_\theta}
+\]
+that can be plugged into the same coefficient-extraction protocol.  Multilinear evaluation is the tensor-structured example~\eqref{eq:intro-eval-kernel}; hypercube summation corresponds to the all-ones kernel; selectors, sparse public functionals, and several wiring predicates give further examples.
+
+The second special case is more consequential.  If both vectors are committed, no public kernel is available.  Nevertheless the reversal
+\[
+  V_b^{\rev}(X)=X^{N-1}V_b(X^{-1})
+\]
+can be read virtually from the same Reed--Solomon commitment whenever the evaluation domain $L\le \Fq^{\times}$ is a multiplicative subgroup.  Indeed $L^{-1}=L$, and at $\xi\in L$ the verifier obtains
+\begin{equation}
+  V_b^{\rev}(\xi)=\xi^{N-1}V_b(\xi^{-1}).
+  \label{eq:intro-virtual-reversal}
+\end{equation}
+Thus an arbitrary inner product of two committed tables is reduced to~\eqref{eq:intro-master-identity} without a second commitment to the reversed polynomial.  This is the first indication that the Kronecker formula is not merely an alternative multilinear PCS opening: it is a general proof primitive for bilinear relations.
+
+\subsection{From bilinear sums to pointwise arithmetic}
+
+A canonical degree-two Sumcheck relation is
+\begin{equation}
+  S=\sum_{j=0}^{N-1}a_jb_j.
+  \label{eq:intro-degree-two-sum}
+\end{equation}
+By~\eqref{eq:intro-ip-coeff}, this is exactly one coefficient-extraction claim.  Consequently the usual $n$-round degree-two Sumcheck can, at least algebraically, be replaced by one committed opening polynomial, one virtual quotient polynomial, and one Reed--Solomon proximity test.  This already covers many terminal reductions in GKR-, Spartan-, and lookup-style protocols.
+
+More general pointwise arithmetic requires an additional ingredient.  Suppose three committed tables satisfy
+\begin{equation}
+  a\had b=c,
+  \qquad\text{i.e.}\qquad
+  a_jb_j=c_j\quad\text{for every }j\in[0,N-1].
+  \label{eq:intro-hadamard}
+\end{equation}
+Choose a random $\gamma\in\F$ and consider
+\[
+  D(\gamma)=\sum_{j=0}^{N-1}\gamma^j(a_jb_j-c_j).
+\]
+If~\eqref{eq:intro-hadamard} is false then $D$ is a nonzero polynomial of degree at most $N-1$, so a random $\gamma$ hides the error with probability at most $(N-1)/|\F|$.  The weighted product term is again a coefficient:
+\begin{equation}
+  \sum_{j=0}^{N-1}\gamma^ja_jb_j
+  =\coeff{N-1}{V_a(\gamma X)V_b^{\rev}(X)},
+  \label{eq:intro-weighted-hadamard}
+\end{equation}
+while the weighted linear term is $V_c(\gamma)$.  The values $V_a(\gamma\xi)$ and $V_c(\gamma)$ lie outside the original Reed--Solomon domain in general.  We bind them back to the committed words with DEEP quotient relations, represented themselves as virtual low-degree words.  The resulting Hadamard argument therefore uses the same ingredients as the inner-product protocol: coefficient extraction, virtual transformations, random batching, and one FRI-style proximity test.
+
+This pointwise multiplication primitive changes the scope of the framework.  Let
+\[
+  G(Y_1,\ldots,Y_t)
+\]
+be an arithmetic expression of bounded size, and let $f_1,\ldots,f_t$ be committed tables.  Instead of applying Sumcheck directly to
+\[
+  \sum_{j=0}^{N-1}G(f_1(j),\ldots,f_t(j)),
+\]
+one may materialize the intermediate wire tables of the pointwise arithmetic circuit.  Additions and scalar multiplications are linear relations; multiplication gates are Hadamard relations; the final hypercube sum is an inner product with the all-ones vector.  Thus every fixed arithmetic circuit over table coordinates reduces to a collection of linear functionals and Hadamard checks.  This does not automatically imply a faster prover---materializing intermediate tables may lose the excellent constants and streaming structure of optimized Sumcheck---but it shows that Sumcheck is not algebraically necessary for this class of relations.  The remaining question becomes whether the resulting low-degree objects can be batched and encoded efficiently enough to compete with a dedicated Sumcheck prover.
+
+\subsection{Lookup, permutation, sparse algebra, and R1CS}
+
+The same two primitives, inner product and Hadamard product, also capture relations that initially appear unrelated to coefficient extraction.
+
+\paragraph{Lookup through logarithmic derivatives.}
+Let $f=(f_i)$ be a lookup vector, let $t=(t_j)$ be a public or committed table, and let $m_j$ denote the claimed multiplicity of $t_j$ among the entries of $f$.  After sampling a challenge $\beta$ away from the relevant poles, define
+\[
+  q_i=(\beta-f_i)^{-1},\qquad h_j=(\beta-t_j)^{-1}.
+\]
+The logarithmic-derivative identity underlying modern lookup arguments is
+\begin{equation}
+  \sum_i q_i=\sum_jm_jh_j.
+  \label{eq:intro-lookup-logderivative}
+\end{equation}
+The reciprocal definitions are pointwise products,
+\[
+  q\had(\beta\mathbf 1-f)=\mathbf 1,
+  \qquad
+  h\had(\beta\mathbf 1-t)=\mathbf 1,
+\]
+and~\eqref{eq:intro-lookup-logderivative} is an equality of two inner products.  Therefore logarithmic-derivative lookup reduces directly to Hadamard checks plus coefficient-extraction inner products.  In particular, the FRI backend need not receive an intermediate Sumcheck claim merely to aggregate the reciprocal table.
+
+\paragraph{Permutation and multiset equality.}
+For two committed vectors $a,b\in\F^N$, multiset equality can be tested by the same logarithmic-derivative principle.  With
+\[
+  q_i=(\beta-a_i)^{-1},\qquad r_i=(\beta-b_i)^{-1},
+\]
+we prove the two reciprocal Hadamard relations and the linear equality
+\[
+  \ip{q}{\mathbf 1}=\ip{r}{\mathbf 1}.
+\]
+Tagged values then turn multiset equality into a permutation/wiring check.  This gives a route complementary to the grand-product constructions common in Plonkish systems and to the Sumcheck-based permutation checks used in HyperPlonk~\cite{HyperPlonk23}.
+
+\paragraph{Sparse matrix--vector products.}
+For R1CS, the central remaining linear operation is multiplication by a sparse public matrix.  Algebraically, if $y=Mz$, a random row-compression challenge $r$ gives
+\[
+  \widetilde y(r)=\ip{p_r}{z},
+  \qquad
+  p_r(j)=\sum_iM_{ij}\eq(i,r),
+\]
+and a second random point can bind $p_r$ to the multilinear extension of $M$.  This form is useful conceptually but does not by itself preserve sparsity: succinctly authenticating a large sparse matrix is precisely one of the roles played by specialized sparse-polynomial arguments in Spartan-like systems.  We therefore also develop a sparse-entry construction.  Write the nonzero entries as triples
+\[
+  (\mathsf{row}_e,\mathsf{col}_e,\mathsf{val}_e),
+  \qquad e\in[0,K-1],
+\]
+where $K=\operatorname{nnz}(M)$.  The sparse-entry construction authenticates the selected column values $z(c(e))$ by indexed lookup, authenticates the random row weights $\alpha^{\iota(r(e))}$ by a second indexed selection, forms the entry contributions $\mu(e)z(c(e))$ by a Hadamard relation, and compares one committed inner product with a public geometric linear functional of the claimed output.  Thus no dense $N\times N$ matrix is formed, and the meaningful public metadata remains proportional to the sparse representation rather than $N^2$.
+
+\paragraph{R1CS.}
+An R1CS instance asks for $z$ satisfying
+\begin{equation}
+  (Az)\had(Bz)=Cz.
+  \label{eq:intro-r1cs}
+\end{equation}
+Once sparse matrix--vector multiplication is expressed by the primitives above,~\eqref{eq:intro-r1cs} decomposes into three sparse linear maps
+\[
+  a=Az,\qquad b=Bz,\qquad c=Cz
+\]
+and one Hadamard relation
+\[
+  a\had b=c.
+\]
+This gives a complete algebraic route from R1CS to coefficient extraction and Reed--Solomon proximity without invoking the classical recursive Sumcheck reduction.  Whether the resulting prover is competitive is an implementation question, not an algebraic one; a principal purpose of the accompanying implementation is to measure this tradeoff under controlled engineering.
+
+\subsection{Why FRI is the natural backend}
+
+Coefficient extraction alone is a rewriting, not a proof system.  The cryptographic value comes from matching the rewriting to the closure properties and locality of Reed--Solomon codes.
+
+First, every object introduced above is either a polynomial of degree less than $N$ or a virtual word that should agree with the evaluation of such a polynomial.  Second, the transformations needed by the verifier are local.  Reversal reads the committed word at $\xi^{-1}$ as in~\eqref{eq:intro-virtual-reversal}; a DEEP quotient reads one committed value and performs one division; the virtual $H$ word in~\eqref{eq:intro-master-identity} is determined pointwise by the other words.  Third, random linear combinations preserve the code.  If the relevant words are valid Reed--Solomon codewords, their random batch is a codeword of the same degree bound.  Conversely, correlated-agreement theorems for Reed--Solomon codes can be used to argue that a sufficiently large set of challenges for which the batch is close to the code forces the individual words to agree with a common low-degree explanation~\cite{BSCI23}.
+
+After this first algebraic/batching step, the remainder is an ordinary proximity problem.  Any suitable FRI-style test can in principle serve as the backend.  The present development uses the same smooth multiplicative domains and even--odd folding structure as Kronecker-FRI, because inversion closure and powers-of-two degree bounds make the virtual transformations particularly clean.  Higher folding arity and Merkle-tree optimizations are orthogonal to the coefficient identities.  More generally, the framework suggests a design rule: use coefficient extraction to convert the proof-system relation into a small family of low-degree words, and then use the strongest available Reed--Solomon proximity machinery to certify the batch.  BaseFold and DeepFold interleave multilinear Sumcheck with foldable-code reductions~\cite{BaseFold24,DeepFold25}; WHIR works directly with constrained Reed--Solomon codes and achieves very low query complexity~\cite{WHIR24}.  Our direction is complementary: simplify the algebraic front end so that a plain low-degree proximity argument can enforce relations that would otherwise be carried by a separate Sumcheck transcript.
+
+This separation is also important for post-quantum claims.  The interactive algebraic protocols proved in this paper are information theoretic.  A non-interactive argument additionally needs a commitment to the oracle words, a transcript/hash construction, and a theorem justifying Fiat--Shamir-style compilation in the quantum random-oracle model.  Hash-based IOP compilation is precisely the setting in which FRI-based systems are commonly viewed as post-quantum candidates~\cite{WHIR24}.  We therefore do not say that coefficient extraction ``makes Sumcheck post-quantum.''  Rather, it removes Sumcheck from a broad algebraic layer and exposes that layer directly to a transparent, hash-based Reed--Solomon backend for which post-quantum compilation can be analyzed as a separate theorem.
+
+\subsection{Contributions and scope}
+\label{sec:intro-contributions}
+
+The paper develops the following results from first principles.
+
+\begin{enumerate}[leftmargin=*,itemsep=0.5em]
+  \item \textbf{A coefficient-extraction calculus.}
+  We give a uniform treatment of reversal, public kernels, table-form multilinear evaluation, hypercube sums, and the master split identity~\eqref{eq:intro-master-identity}.  The central abstraction is a succinct kernel family: a public vector whose reversed generating polynomial can be evaluated locally without materializing the vector.
+
+  \item \textbf{One table-form commitment, several proof primitives.}
+  The Kronecker table encoding~\eqref{eq:intro-table-encoding} supports multilinear evaluation, public linear functionals, arbitrary committed inner products, and the subsequent compound relations without changing the underlying Reed--Solomon commitment.
+
+  \item \textbf{A sumcheck-free committed inner-product argument.}
+  For two committed vectors we use the virtual reversal~\eqref{eq:intro-virtual-reversal}, one opening polynomial, one virtual quotient word, and one FRI-style proximity test.  The protocol proves~\eqref{eq:intro-degree-two-sum} directly rather than reducing it by $n$ Sumcheck rounds.
+
+  \item \textbf{A sumcheck-free Hadamard argument.}
+  We prove pointwise multiplication~\eqref{eq:intro-hadamard} by geometric random compression~\eqref{eq:intro-weighted-hadamard} and DEEP quotient consistency.  This supplies the multiplication gate needed to vectorize arbitrary bounded pointwise arithmetic circuits.
+
+  \item \textbf{Lookup and permutation from the same primitives.}
+  We derive logarithmic-derivative lookup and multiset checks from reciprocal Hadamard relations plus inner-product equalities.  Tagged variants yield permutation and wiring checks.  The reductions are proved algebraically, including pole and Schwartz--Zippel error terms.
+
+  \item \textbf{Sparse matrix--vector multiplication and R1CS.}
+  We give both a direct random-compression formulation and a sparse-entry construction.  The latter reduces a sparse matrix product to two indexed selections, one Hadamard multiplication, one committed inner product, and one public geometric linear functional.  Combining three such products with one Hadamard relation yields an R1CS argument for~\eqref{eq:intro-r1cs}.
+
+  \item \textbf{Heterogeneous batching into one proximity layer.}
+  We formulate the algebraic relations so that evaluation, inner-product, Hadamard, quotient, lookup, and sparse-consistency words can be combined by random challenges before the folding stage.  The soundness analysis isolates the algebraic challenge errors from the final proximity error.
+
+  \item \textbf{Post-quantum non-interactive compilation.}
+  We prove the relaxed round-by-round decoding-knowledge property required by the salted BCS compiler for interactive oracle reductions and then invoke the quantum-random-oracle theorem of Chiesa, Di, Hu, and Zheng.  This yields post-quantum straight-line knowledge soundness for the compiled framework under the exact transcript and Merkle layout stated in \cref{sec:post-quantum}.
+\end{enumerate}
+
+The scope of the claim is deliberately narrower than ``Sumcheck is unnecessary.''  Sumcheck handles general low-degree hypercube sums directly and with excellent prover complexity.  Our framework targets relations that can be decomposed into linear functionals, inner products, pointwise multiplication, reciprocal constraints, and sparse structured access.  These already cover important proof-system components, but the reduction may introduce auxiliary tables and Reed--Solomon encoding costs.  The decisive systems question is therefore quantitative: after batching and shared encoding, when is the coefficient-extraction route faster, smaller, or easier to accelerate than the corresponding Sumcheck pipeline?  We therefore make no benchmark superiority claim in this manuscript.  The theorem statements and symbolic cost model are organized so that a subsequent Lean 4 formalization and controlled Rust implementation can mirror the paper section by section.
+
+\subsection{Relation to prior work}
+
+The middle-coefficient expression for an inner product is classical.  Pairing-based multilinear commitments also exploit tensor-structured representations; Mercury, for example, uses a related inner-product viewpoint with KZG commitments.  The contribution here is not the elementary coefficient identity by itself, but its systematic use as the algebraic front end of a transparent Reed--Solomon proximity argument, together with virtual reversal and quotient words that avoid extra commitments.
+
+The closest code-based multilinear commitments include BaseFold, DeepFold, WHIR, and the more recent TensorSwitch.  BaseFold introduced a general foldable-code perspective and couples a multilinear evaluation reduction with FRI-inspired folding~\cite{BaseFold24}.  DeepFold moves the analysis into the list-decoding regime to reduce query complexity and proof size~\cite{DeepFold25}.  WHIR constructs a proximity test for constrained Reed--Solomon codes and emphasizes very fast verification~\cite{WHIR24}, while TensorSwitch obtains a hash-based multilinear PCS from tensor codes using list decoding and correlated agreement~\cite{TensorSwitch26}.  These works show that multilinear algebra and code-based proximity can coexist efficiently.  We investigate a different interface between them: rather than carrying a Sumcheck claim through the folding process, we first rewrite the target relation as coefficient and pointwise identities among univariate low-degree objects.
+
+Spartan uses Sumcheck to prove R1CS satisfiability and couples it to polynomial commitments~\cite{Setty20}; the 2026 BinarySpartan instantiation shows that an aggressively optimized transparent, hash-based Spartan architecture can retain Sumcheck while moving to binary fields~\cite{BinarySpartan26}.  HyperPlonk develops Sumcheck-based zero and permutation checks over multilinear polynomials~\cite{HyperPlonk23}.  Lasso and Jolt demonstrate the importance of efficient lookup arguments for zkVMs~\cite{Lasso23,Jolt23}; Celer targets the complementary regime of very large query vectors~\cite{Celer26}, while Twist and Shout further emphasize memory checking and lookup as central prover bottlenecks~\cite{TwistShout26}.  Our lookup, permutation, sparse-matrix, and memory-oriented reductions are motivated by these applications, but the proof mechanism is different: logarithmic derivatives and sparse access are reduced to the inner-product/Hadamard instruction set and then to Reed--Solomon proximity.
+
+Finally, this paper builds on two earlier pieces of our work.  The tree-circuit representation of multilinear polynomials~\cite{MkhidaIguider26} studies the recursive structure and cost of Sumcheck itself; we retain its notation for $\Fq$, $n$, $N=2^n$, the Boolean indexing of monomials, and the vector-space view of multilinear polynomials.  Kronecker-FRI~\cite{KroneckerFRI26} introduced the coefficient-extraction opening identity for multilinear evaluation and showed how to enforce it with one FRI-style proximity test.  The present work changes the emphasis: multilinear evaluation becomes only the first instance of a broader coefficient-extraction calculus whose main objects are linear and bilinear relations among committed tables.
+
+\subsection{Organization}
+
+The remainder of the paper is developed in the following order.  We first fix the finite-field, multilinear, Reed--Solomon, and proximity-test notation and state the correlated-agreement result used in soundness.  We then define the table-form Kronecker commitment and develop the coefficient-extraction calculus: reversal, succinct kernels, multilinear evaluation, and the master split identity.  The next sections introduce virtual reversal and DEEP quotient words, followed by the generic coefficient-extraction protocol and its specializations to public linear functionals, committed inner products, and Hadamard products.  After that we prove heterogeneous batching and develop lookup, multiset/permutation, sparse matrix--vector, R1CS, and memory-checking reductions.  The final theory sections collect soundness and knowledge extraction, treat the non-interactive hash-based compilation and its post-quantum conditions, and analyze complexity.  We conclude with a systematic comparison to Sumcheck-based and other FRI-based architectures, followed by limitations and open problems.

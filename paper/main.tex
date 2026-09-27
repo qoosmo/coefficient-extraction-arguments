@@ -1,0 +1,67 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{aliascnt}
+\usepackage{bm}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+\usepackage[backend=biber,style=alphabetic,maxbibnames=20]{biblatex}
+\addbibresource{references.bib}
+
+\input{macros}
+
+\title{\textbf{Coefficient-Extraction Arguments for Transparent Post-Quantum Proof Systems}\\
+\large From Kronecker Encodings to Inner Products, Hadamard Relations, Lookups, and R1CS}
+\author{Ali Mkhida\\Algorizk Labs\\\texttt{ali.mkhida@algorizk.xyz}}
+\date{Working manuscript, September 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We develop a coefficient-extraction framework for transparent arguments over multilinear tables.  Its basic identity is the middle-coefficient formula
+\[
+  \sum_{j=0}^{N-1}a_jb_j
+  =[X^{N-1}]\Bigl(\sum_{j=0}^{N-1}a_jX^j\Bigr)
+                  \Bigl(\sum_{j=0}^{N-1}b_jX^{N-1-j}\Bigr),
+\]
+combined with a split identity that turns the selected coefficient into local relations among degree-$<N$ Reed--Solomon words.  On inversion-closed multiplicative domains, reversal and the high part of the split are virtual words; DEEP quotients similarly bind out-of-domain values without separate commitments.  We use these facts to give self-contained protocols for public linear functionals, committed inner products, and pointwise Hadamard products, and prove that heterogeneous instances of these relations can be combined before a single FRI-style folding test.  Logarithmic-derivative lookup and multiset arguments reduce to reciprocal Hadamard relations and linear/inner-product claims; indexed selection then yields sparse matrix--vector multiplication, from which we obtain R1CS and offline memory-consistency arguments.  The interactive soundness analysis is information theoretic in the unique-decoding regime, apart from a quoted correlated-agreement theorem for Reed--Solomon codes.  We further prove the relaxed round-by-round decoding-knowledge property needed by the salted BCS compiler of Chiesa, Di, Hu, and Zheng, obtaining post-quantum straight-line knowledge soundness in the quantum random-oracle model for the compiled non-interactive framework.  The construction does not claim zero knowledge or performance superiority over optimized Sumcheck systems; we give symbolic cost accounting and isolate list decoding, higher-rate identities, and implementation fusion as the principal remaining efficiency questions.
+\end{abstract}
+
+\tableofcontents
+
+\input{sections/01-introduction}
+\input{sections/02-preliminaries}
+\input{sections/03-table-encoding}
+\input{sections/04-coefficient-calculus}
+\input{sections/05-virtual-oracles}
+\input{sections/06-generic-protocol}
+\input{sections/07-linear-functionals}
+\input{sections/08-inner-product}
+\input{sections/09-hadamard}
+\input{sections/10-batching}
+\input{sections/11-lookup}
+\input{sections/12-permutation}
+\input{sections/13-sparse-matvec}
+\input{sections/14-r1cs}
+\input{sections/15-memory}
+\input{sections/16-soundness}
+\input{sections/17-post-quantum}
+\input{sections/18-complexity}
+\input{sections/19-comparison}
+\input{sections/20-limitations}
+\input{sections/21-conclusion}
+
+% The abstract will be audited once the complete theorem/reference audit is finished.
+
+\printbibliography
+
+\end{document}

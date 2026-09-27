@@ -1,0 +1,561 @@
+\section{Memory Consistency Arguments}
+\label{sec:memory}
+
+Memory consistency is a natural test of whether the preceding primitives form a sufficiently expressive proof-system backend.  A memory trace contains a sequence of accesses in execution order; correctness is a global temporal property, because the value returned by a read depends on the most recent preceding access to the same address.  Standard offline memory-checking arguments therefore introduce a second copy of the accesses sorted by address and time, prove that the two copies are permutations of one another, and check local transition rules on the sorted copy.  This section gives a self-contained reduction of that strategy to the primitives developed above.  The resulting argument uses only multiset equality, lookup, public linear functionals, and Hadamard relations, and hence all protected low-degree words can be placed in one heterogeneous folding batch.
+
+The goal of the section is algebraic.  We prove equivalence between an ordinary finite-memory execution and the committed relation below, and we give an explicit interactive soundness bound.  We do not claim here that this construction is already the most efficient memory argument; the implementation comparison with specialized constructions such as Jolt and Twist--Shout is deferred to the experimental section \cite{Jolt23,TwistShout26}.
+
+\subsection{Operational memory semantics}
+\label{sec:memory-operational}
+
+Fix an address-space size $A$ with
+\begin{equation}
+  1\le A\le N,
+  \qquad
+  p=\operatorname{char}(\F)>2\max\{A,N\}.
+  \label{eq:memory-characteristic}
+\end{equation}
+We identify the integer intervals $\{0,\ldots,A-1\}$ and $\{0,\ldots,N-1\}$ with their canonical images in $\Fq\subseteq\F$.  Let
+\begin{equation}
+  \mu_0:\{0,\ldots,A-1\}\longrightarrow\F
+  \label{eq:memory-initial-state}
+\end{equation}
+be a public initial memory state.
+
+An execution trace of length $N$ consists of tables
+\begin{equation}
+  a,\omega,r,d:\B^n\longrightarrow\F,
+  \label{eq:memory-execution-tables}
+\end{equation}
+where, for access index $i\in\{0,\ldots,N-1\}$,
+\begin{itemize}[leftmargin=*]
+  \item $a(i)$ is the address;
+  \item $\omega(i)\in\{0,1\}$ is the write flag;
+  \item $r(i)$ is the value observed immediately before the access;
+  \item $d(i)$ is the proposed new value when $\omega(i)=1$.
+\end{itemize}
+The execution time is the public index $i$ itself.  A read has $\omega(i)=0$ and leaves memory unchanged; a write has $\omega(i)=1$ and changes the addressed cell to $d(i)$.  It is convenient to define the post-access value
+\begin{equation}
+  p(i)
+  \defeq
+  r(i)+\omega(i)\bigl(d(i)-r(i)\bigr).
+  \label{eq:memory-post-value}
+\end{equation}
+Thus $p(i)=r(i)$ for a read and $p(i)=d(i)$ for a write.
+
+\begin{definition}[Operationally consistent memory trace]
+\label{def:memory-operational-consistency}
+The trace $(a,\omega,r,d)$ is \emph{operationally consistent with $\mu_0$} if $a(i)\in\{0,\ldots,A-1\}$ and $\omega(i)\in\{0,1\}$ for every $i$, and there exist memory states
+\[
+  \mu_i:\{0,\ldots,A-1\}\to\F,
+  \qquad 0\le i\le N,
+\]
+with initial state \eqref{eq:memory-initial-state} such that, for every access $i$,
+\begin{align}
+  r(i)&=\mu_i(a(i)),
+  \label{eq:memory-read-semantics}\\
+  \mu_{i+1}(x)&=\mu_i(x)
+       \quad\text{for }x\ne a(i),
+  \label{eq:memory-other-cells}\\
+  \mu_{i+1}(a(i))&=p(i).
+  \label{eq:memory-address-update}
+\end{align}
+\end{definition}
+
+A shorter trace may be padded to a power of two with read-only accesses to a distinguished valid address.  Since such accesses do not change the state, we work with length exactly $N$ without loss of generality at the algebraic level.
+
+\subsection{The sorted-trace characterization}
+\label{sec:memory-sorted-characterization}
+
+The prover supplies a second access table
+\begin{equation}
+  (\bar a,\bar t,\bar\omega,\bar r,\bar d):\B^n\longrightarrow\F^5,
+  \label{eq:memory-sorted-trace}
+\end{equation}
+intended to contain exactly the execution records
+\begin{equation}
+  (a(i),i,\omega(i),r(i),d(i))
+  \label{eq:memory-execution-record}
+\end{equation}
+ordered lexicographically by address and then by execution time.  Put
+\begin{equation}
+  \bar p(k)
+  \defeq
+  \bar r(k)+\bar\omega(k)\bigl(\bar d(k)-\bar r(k)\bigr).
+  \label{eq:memory-sorted-post}
+\end{equation}
+
+For $0\le k<N-1$, define the adjacent differences
+\begin{align}
+  \Delta_a(k)&\defeq \bar a(k+1)-\bar a(k),
+  \label{eq:memory-address-difference}\\
+  \Delta_t(k)&\defeq \bar t(k+1)-\bar t(k).
+  \label{eq:memory-time-difference}
+\end{align}
+We set $\Delta_a(N-1)=\Delta_t(N-1)=0$ only to obtain length-$N$ tables.
+
+Let $s:\B^n\to\F$ be the claimed same-address indicator, with $s(N-1)=0$, and let $u:\B^n\to\F$ be an auxiliary inverse table.  On $k<N-1$ impose
+\begin{align}
+  s(k)\Delta_a(k)&=0,
+  \label{eq:memory-same-address-zero}\\
+  \Delta_a(k)u(k)&=1-s(k).
+  \label{eq:memory-same-address-inverse}
+\end{align}
+These two equations force $s(k)=1$ exactly when the adjacent addresses are equal.
+
+\begin{lemma}[Exact same-address indicator]
+\label{lem:memory-same-address-indicator}
+Assume \eqref{eq:memory-same-address-zero} and \eqref{eq:memory-same-address-inverse}.  Then for every $k<N-1$,
+\[
+  s(k)=1 \iff \Delta_a(k)=0,
+  \qquad
+  s(k)=0 \iff \Delta_a(k)\ne0.
+\]
+In particular $s(k)\in\{0,1\}$ without a separate Booleanity constraint.
+\end{lemma}
+
+\begin{proof}
+If $\Delta_a(k)=0$, equation \eqref{eq:memory-same-address-inverse} gives $0=1-s(k)$, hence $s(k)=1$.  If $\Delta_a(k)\ne0$, equation \eqref{eq:memory-same-address-zero} gives $s(k)=0$ because $\F$ is a field; then \eqref{eq:memory-same-address-inverse} says $u(k)=\Delta_a(k)^{-1}$.  The converses follow immediately.
+\end{proof}
+
+To express strict time order only inside an address block, define
+\begin{equation}
+  q_t(k)
+  \defeq
+  s(k)\bigl(\Delta_t(k)-1\bigr)
+  \qquad (k<N-1),
+  \label{eq:memory-time-range-table}
+\end{equation}
+with $q_t(N-1)=0$.  We will require
+\begin{equation}
+  \Delta_a(k)\in\{0,\ldots,A-1\},
+  \qquad
+  q_t(k)\in\{0,\ldots,N-2\}.
+  \label{eq:memory-range-conditions}
+\end{equation}
+The first range condition makes the address sequence nondecreasing; the second makes timestamps strictly increasing when $s(k)=1$.
+
+\begin{lemma}[Range conditions imply lexicographic order]
+\label{lem:memory-lexicographic-order}
+Assume every $\bar a(k)$ lies in $\{0,\ldots,A-1\}$, every $\bar t(k)$ lies in $\{0,\ldots,N-1\}$, \eqref{eq:memory-characteristic}, \eqref{eq:memory-same-address-zero}--\eqref{eq:memory-same-address-inverse}, and \eqref{eq:memory-range-conditions}.  Then
+\begin{equation}
+  (\bar a(k),\bar t(k))
+  <_{\mathrm{lex}}
+  (\bar a(k+1),\bar t(k+1))
+  \label{eq:memory-lex-order}
+\end{equation}
+for every $k<N-1$ for which the two records are distinct.  More precisely, either $\bar a(k+1)>\bar a(k)$ as ordinary integers, or the addresses are equal and $\bar t(k+1)>\bar t(k)$.
+\end{lemma}
+
+\begin{proof}
+Because $\bar a(k),\bar a(k+1)\in\{0,\ldots,A-1\}$, the ordinary difference lies in $[-(A-1),A-1]$.  If it were negative, its field representative would be at least $p-(A-1)>A-1$ by \eqref{eq:memory-characteristic}, contradicting the first condition of \eqref{eq:memory-range-conditions}.  Hence $\bar a(k+1)\ge\bar a(k)$.
+
+If the inequality is strict there is nothing more to prove.  If the addresses are equal, \cref{lem:memory-same-address-indicator} gives $s(k)=1$, so $q_t(k)=\Delta_t(k)-1$.  The second range condition says this field element is one of $0,\ldots,N-2$.  Since both timestamps lie in $\{0,\ldots,N-1\}$ and $p>2N$, a negative ordinary difference cannot have such a representative.  Therefore $\Delta_t(k)-1\ge0$ as an integer and $\bar t(k+1)>\bar t(k)$.
+\end{proof}
+
+Next define the block-start table $b:\B^n\to\F$ by
+\begin{equation}
+  b(0)=1,
+  \qquad
+  b(k)=1-s(k-1)\quad(1\le k<N).
+  \label{eq:memory-block-start}
+\end{equation}
+Let $\iota_0:\B^n\to\F$ be a claimed initial-value table satisfying
+\begin{equation}
+  \iota_0(k)=\mu_0(\bar a(k)).
+  \label{eq:memory-initial-selection}
+\end{equation}
+Finally define a continuity-difference table $e:\B^n\to\F$ by
+\begin{equation}
+  e(k)=\bar r(k+1)-\bar p(k)
+  \quad(k<N-1),
+  \qquad
+  e(N-1)=0.
+  \label{eq:memory-continuity-difference}
+\end{equation}
+The local state constraints are
+\begin{align}
+  \bar\omega\had(\bar\omega-\mathbf1)&=0,
+  \label{eq:memory-write-boolean}\\
+  \bar\omega\had(\bar d-\bar r)&=\bar p-\bar r,
+  \label{eq:memory-post-hadamard}\\
+  s\had e&=0,
+  \label{eq:memory-continuity-hadamard}\\
+  b\had(\bar r-\iota_0)&=0.
+  \label{eq:memory-initial-hadamard}
+\end{align}
+Equation \eqref{eq:memory-continuity-hadamard} carries the post-access value to the next access of the same address; equation \eqref{eq:memory-initial-hadamard} anchors the first access of each address block to the public initial memory.
+
+\begin{definition}[Locally valid sorted memory trace]
+\label{def:memory-locally-valid-sorted}
+A collection
+\[
+  (\bar a,\bar t,\bar\omega,\bar r,\bar d,
+    \bar p,\Delta_a,\Delta_t,s,u,q_t,b,\iota_0,e)
+\]
+is \emph{locally valid} if:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item $\bar a(k)\in\{0,\ldots,A-1\}$ and $\bar t(k)\in\{0,\ldots,N-1\}$;
+  \item \eqref{eq:memory-address-difference}, \eqref{eq:memory-time-difference}, \eqref{eq:memory-block-start}, \eqref{eq:memory-continuity-difference} hold;
+  \item \eqref{eq:memory-same-address-zero}, \eqref{eq:memory-same-address-inverse}, \eqref{eq:memory-time-range-table}, and \eqref{eq:memory-range-conditions} hold;
+  \item \eqref{eq:memory-initial-selection} holds;
+  \item all four relations \eqref{eq:memory-write-boolean}--\eqref{eq:memory-initial-hadamard} hold.
+\end{enumerate}
+\end{definition}
+
+\begin{theorem}[Sorted-trace characterization of memory consistency]
+\label{thm:memory-sorted-characterization}
+Assume \eqref{eq:memory-characteristic}.  An execution trace $(a,\omega,r,d)$ is operationally consistent with $\mu_0$ if and only if there exists a locally valid sorted trace in the sense of \cref{def:memory-locally-valid-sorted} whose record multiset is exactly
+\begin{equation}
+  \bigl\{\!\!\bigl\{
+    (a(i),i,\omega(i),r(i),d(i)):
+    0\le i<N
+  \bigr\}\!\!\bigr\}.
+  \label{eq:memory-record-multiset}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Suppose first that the execution trace is operationally consistent.  Sort the $N$ execution records lexicographically by the ordinary integer pair $(a(i),i)$ and write the resulting tables as in \eqref{eq:memory-sorted-trace}.  Since the execution times are distinct, this order is strict within every address block.  Define $\bar p$ by \eqref{eq:memory-sorted-post}, define the adjacent differences by \eqref{eq:memory-address-difference}--\eqref{eq:memory-time-difference}, let $s$ be the actual same-address indicator, set $u(k)=\Delta_a(k)^{-1}$ when $s(k)=0$ and arbitrarily when $s(k)=1$, and define $q_t,b,\iota_0,e$ by the displayed equations above.  Ordinary sortedness gives the two range conditions.  Equations \eqref{eq:memory-same-address-zero} and \eqref{eq:memory-same-address-inverse} hold by construction.  The write-flag and post-value equations follow from the operational update rule.  If two adjacent sorted records have the same address, there is no access to that address at an intermediate execution time, so the memory value immediately before the later record is exactly the post-access value of the earlier record; hence \eqref{eq:memory-continuity-hadamard}.  At the first record of an address block there is no earlier access to that address, so its read value is $\mu_0$ at that address; hence \eqref{eq:memory-initial-hadamard}.  Thus the sorted trace is locally valid and has record multiset \eqref{eq:memory-record-multiset}.
+
+Conversely, suppose a locally valid sorted trace with multiset \eqref{eq:memory-record-multiset} exists.  By \cref{lem:memory-lexicographic-order}, the sorted records are nondecreasing by address and strictly increasing in execution time within every fixed address.  Because their multiset equals \eqref{eq:memory-record-multiset}, each execution time $i\in\{0,\ldots,N-1\}$ occurs exactly once, attached to the original access record at time $i$.
+
+Fix an address $x$.  Its records therefore form one contiguous block
+\[
+  k_1<k_2<\cdots<k_m
+\]
+in sorted order, and their timestamps satisfy
+\[
+  \bar t(k_1)<\bar t(k_2)<\cdots<\bar t(k_m).
+\]
+By \eqref{eq:memory-block-start}, $b(k_1)=1$, so \eqref{eq:memory-initial-hadamard} gives
+\[
+  \bar r(k_1)=\mu_0(x).
+\]
+For every $j<m$, one has $s(k_j)=1$, and \eqref{eq:memory-continuity-hadamard} together with \eqref{eq:memory-continuity-difference} gives
+\[
+  \bar r(k_{j+1})=\bar p(k_j).
+\]
+Equation \eqref{eq:memory-write-boolean} makes every write flag Boolean, and \eqref{eq:memory-post-hadamard} gives exactly the read/write transition \eqref{eq:memory-post-value}.  Hence, along the strictly increasing execution times at address $x$, each access reads the state left by the preceding access to $x$, or $\mu_0(x)$ if there is none.
+
+Define $\mu_i(x)$ to be $\mu_0(x)$ if no access to $x$ occurs before time $i$, and otherwise the post-value of the latest access to $x$ with time $<i$.  The preceding paragraph shows that the access at time $i$ reads $\mu_i(a(i))$ and leaves exactly $p(i)$ at that address.  All other addresses retain their latest previous post-value.  Therefore \eqref{eq:memory-read-semantics}--\eqref{eq:memory-address-update} hold for every $i$, proving operational consistency.
+\end{proof}
+
+\subsection{Authenticating the sorted trace}
+\label{sec:memory-authentication}
+
+We now reduce the conditions of \cref{thm:memory-sorted-characterization} to the committed primitives of the preceding sections.
+
+\paragraph{Tuple permutation.}
+For a challenge $\eta\in\F$, compress a five-component record by
+\begin{equation}
+  \chi_{\eta}(x_0,x_1,x_2,x_3,x_4)
+  \defeq
+  x_0+\eta x_1+\eta^2x_2+\eta^3x_3+\eta^4x_4.
+  \label{eq:memory-tuple-compression}
+\end{equation}
+Define the execution and sorted compressed tables
+\begin{align}
+  c_{\mathrm{exec},\eta}(i)
+  &\defeq
+  \chi_\eta(a(i),i,\omega(i),r(i),d(i)),
+  \label{eq:memory-exec-compression}\\
+  c_{\mathrm{sort},\eta}(k)
+  &\defeq
+  \chi_\eta(\bar a(k),\bar t(k),\bar\omega(k),\bar r(k),\bar d(k)).
+  \label{eq:memory-sort-compression}
+\end{align}
+Both commitment words are virtual linear combinations of the component commitments and the public timestamp table.
+
+\begin{lemma}[Tuple compression detects a false record permutation]
+\label{lem:memory-tuple-compression}
+If the two multisets of five-component records differ, there is a set $T_{\mathrm{tuple}}\subseteq\F$ with
+\begin{equation}
+  |T_{\mathrm{tuple}}|
+  \le
+  4\binom{2N}{2}
+  \label{eq:memory-tuple-collision-bound}
+\end{equation}
+such that for every $\eta\notin T_{\mathrm{tuple}}$ the scalar multisets
+$\{\!\{c_{\mathrm{exec},\eta}(i)\}\!\}$ and
+$\{\!\{c_{\mathrm{sort},\eta}(k)\}\!\}$ differ.
+\end{lemma}
+
+\begin{proof}
+Consider the union of the supports of the two record multisets; it contains at most $2N$ distinct tuples.  For two distinct tuples $x\ne y$, the equality $\chi_\eta(x)=\chi_\eta(y)$ is the vanishing of a nonzero polynomial in $\eta$ of degree at most $4$, hence has at most four solutions.  Let $T_{\mathrm{tuple}}$ be the union of these collision sets over unordered pairs of distinct tuples.  This gives \eqref{eq:memory-tuple-collision-bound}.  Outside $T_{\mathrm{tuple}}$, $\chi_\eta$ is injective on the union of supports; equality of the compressed scalar multisets would then imply equality of the original tuple multisets, contrary to hypothesis.
+\end{proof}
+
+Thus the record permutation is reduced to the scalar multiset argument of \cref{sec:committed-multiset} applied to \eqref{eq:memory-exec-compression} and \eqref{eq:memory-sort-compression}.
+
+\paragraph{Range lookups.}
+Let $R_A$ be a public length-$N$ table containing every element of $\{0,\ldots,A-1\}$ at least once and arbitrary repetitions thereafter.  Let $R_{\Delta A}$ be the same range table, and let $R_T$ contain every element of $\{0,\ldots,N-2\}$ at least once.  Membership of the execution addresses $a$, adjacent differences $\Delta_a$, and conditional time differences $q_t$ in their respective integer ranges is proved by three instances of the lookup relation of \cref{sec:lookup}.  Multiplicity tables are prover supplied and decoded exactly as in \cref{def:lookup-relation}.  The tuple permutation then transfers address validity from the execution trace to the sorted trace and transfers the public timestamp multiset $\{0,\ldots,N-1\}$ to $\bar t$.
+
+\paragraph{Initial-memory selection.}
+The address map in \eqref{eq:memory-initial-selection} is witness dependent, so the public-index-map specialization of \cref{sec:indexed-selection} does not apply directly.  Instead, sample a tag $\tau_0\in\F$ and form
+\begin{align}
+  f_0(k)&\defeq \iota_0(k)+\tau_0\bar a(k),
+  \label{eq:memory-initial-query-tag}\\
+  t_0(j)&\defeq \mu_0(j)+\tau_0 j
+  \qquad(0\le j<A),
+  \label{eq:memory-initial-table-tag}
+\end{align}
+with the public table padded to length $N$.  A logarithmic-derivative lookup from $f_0$ into $t_0$ proves \eqref{eq:memory-initial-selection}, except when two distinct address--value pairs collide under the random tag.
+
+\begin{lemma}[Soundness of public initial-memory selection]
+\label{lem:memory-initial-selection}
+Suppose \eqref{eq:memory-initial-selection} is false.  Then there is a set $T_{\mathrm{init}}\subseteq\F$ with
+\begin{equation}
+  |T_{\mathrm{init}}|
+  \le\binom{N+A}{2}
+  \label{eq:memory-initial-tag-bound}
+\end{equation}
+such that for every $\tau_0\notin T_{\mathrm{init}}$, the tagged query table \eqref{eq:memory-initial-query-tag} cannot satisfy the algebraic lookup relation against \eqref{eq:memory-initial-table-tag} for any multiplicity table.
+\end{lemma}
+
+\begin{proof}
+Consider the multiset of query pairs $(\bar a(k),\iota_0(k))$ and the set of public pairs $(j,\mu_0(j))$, $0\le j<A$.  Their union contains at most $N+A$ distinct pairs.  Two distinct pairs $(i,x)$ and $(j,y)$ collide under $x+\tau_0 i$ and $y+\tau_0 j$ for at most one value of $\tau_0$, exactly as in \cref{lem:indexed-selection-compression}.  Outside the union $T_{\mathrm{init}}$ of all such values, scalar compression is injective on the union of supports.  If the compressed lookup relation held, every query pair would therefore equal a public pair with the same first coordinate, forcing $\iota_0(k)=\mu_0(\bar a(k))$ for every $k$, contrary to hypothesis.
+\end{proof}
+
+As in \cref{rem:collision-free-index-tagging}, extension-field tagging may remove the collision term \eqref{eq:memory-initial-tag-bound} entirely when addresses and values lie in a proper subfield.
+
+\subsection{Linear adjacency identities}
+\label{sec:memory-linear-identities}
+
+The definitions of $\Delta_a,\Delta_t,b,e$ are linear but involve adjacent rows.  They can be checked without a new primitive by one random linear fingerprint.
+
+For a table $x$ and a scalar $\lambda\in\F$, write
+\begin{equation}
+  \mathcal G_\lambda(x)
+  \defeq
+  \sum_{k=0}^{N-1}\lambda^k x(k).
+  \label{eq:memory-geometric-functional}
+\end{equation}
+This is a public linear functional of \cref{sec:linear-functionals}.  Define five residual tables by
+\begin{align}
+  \ell_a(k)
+  &\defeq
+  \begin{cases}
+    \Delta_a(k)-\bar a(k+1)+\bar a(k),&k<N-1,\\
+    \Delta_a(N-1),&k=N-1,
+  \end{cases}
+  \label{eq:memory-residual-a}\\
+  \ell_t(k)
+  &\defeq
+  \begin{cases}
+    \Delta_t(k)-\bar t(k+1)+\bar t(k),&k<N-1,\\
+    \Delta_t(N-1),&k=N-1,
+  \end{cases}
+  \label{eq:memory-residual-t}\\
+  \ell_e(k)
+  &\defeq
+  \begin{cases}
+    e(k)-\bar r(k+1)+\bar p(k),&k<N-1,\\
+    e(N-1),&k=N-1,
+  \end{cases}
+  \label{eq:memory-residual-e}\\
+  \ell_b(k)
+  &\defeq
+  \begin{cases}
+    b(0)-1,&k=0,\\
+    b(k)+s(k-1)-1,&1\le k<N,
+  \end{cases}
+  \label{eq:memory-residual-b}\\
+  \ell_q(k)
+  &\defeq
+  \begin{cases}
+    0,&k<N-1,\\
+    q_t(N-1),&k=N-1.
+  \end{cases}
+  \label{eq:memory-residual-q}
+\end{align}
+Every geometric sum $\mathcal G_\lambda(\ell_\bullet)$ expands into public linear functionals of the committed component tables; the shifted terms merely change the public weight from $\lambda^k$ to $\lambda^{k-1}$ or $\lambda^{k+1}$ on the appropriate coordinates.
+
+\begin{lemma}[One fingerprint for all adjacency identities]
+\label{lem:memory-linear-fingerprint}
+Suppose at least one of the five residual tables in \eqref{eq:memory-residual-a}--\eqref{eq:memory-residual-q} is nonzero.  Sample $\chi,\lambda\leftarrow\F$ and test
+\begin{equation}
+  \sum_{j=0}^{4}\chi^j\mathcal G_\lambda(\ell_j)=0,
+  \qquad
+  (\ell_0,\ell_1,\ell_2,\ell_3,\ell_4)
+  =(\ell_a,\ell_t,\ell_e,\ell_b,\ell_q).
+  \label{eq:memory-linear-fingerprint}
+\end{equation}
+Then \eqref{eq:memory-linear-fingerprint} holds with probability at most
+\begin{equation}
+  \frac{4}{|\F|}+\frac{N-1}{|\F|}.
+  \label{eq:memory-linear-fingerprint-error}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Choose a coordinate $k_0$ at which not all five residual values vanish.  The polynomial
+\[
+  R_{k_0}(Z)=\sum_{j=0}^{4}Z^j\ell_j(k_0)
+\]
+is nonzero of degree at most $4$, so for all but at most four values of $\chi$ the combined residual table
+\[
+  \ell_\chi(k)=\sum_{j=0}^{4}\chi^j\ell_j(k)
+\]
+is nonzero.  Fix such a $\chi$.  Then $\mathcal G_\lambda(\ell_\chi)$ is a nonzero polynomial in $\lambda$ of degree at most $N-1$, and therefore vanishes for at most $N-1$ values of $\lambda$.  A union bound proves \eqref{eq:memory-linear-fingerprint-error}.
+\end{proof}
+
+Thus all adjacency bookkeeping, including the terminal condition $q_t(N-1)=0$, costs one scalar public-linear-functional equality and the outer error \eqref{eq:memory-linear-fingerprint-error}.
+
+\subsection{The memory sub-batch and protocol}
+\label{sec:memory-protocol}
+
+All remaining identities are pointwise multiplications and therefore Hadamard relations.  Besides \eqref{eq:memory-write-boolean}--\eqref{eq:memory-initial-hadamard}, we include
+\begin{align}
+  s\had\Delta_a&=0,
+  \label{eq:memory-batch-same-zero}\\
+  \Delta_a\had u&=\mathbf1-s,
+  \label{eq:memory-batch-same-inverse}\\
+  s\had(\Delta_t-\mathbf1)&=q_t.
+  \label{eq:memory-batch-time}
+\end{align}
+Affine combinations such as $\bar\omega-\mathbf1$, $\bar d-\bar r$, and $\mathbf1-s$ are virtual linear words and require no new commitment.
+
+\begin{definition}[Memory consistency sub-batch]
+\label{def:memory-sub-batch}
+Fix all outer compression, lookup-shift, and fingerprint challenges.  The heterogeneous batch $\mathfrak B_{\mathrm{Mem}}$ consists of:
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item the scalar multiset sub-batch proving equality of \eqref{eq:memory-exec-compression} and \eqref{eq:memory-sort-compression};
+  \item four lookup sub-batches: execution-address range, $\Delta_a$ range, $q_t$ range, and public initial-memory selection \eqref{eq:memory-initial-query-tag}--\eqref{eq:memory-initial-table-tag};
+  \item the seven Hadamard relations \eqref{eq:memory-write-boolean}, \eqref{eq:memory-post-hadamard}, \eqref{eq:memory-continuity-hadamard}, \eqref{eq:memory-initial-hadamard}, and \eqref{eq:memory-batch-same-zero}--\eqref{eq:memory-batch-time};
+  \item the public linear-functional equality \eqref{eq:memory-linear-fingerprint}.
+\end{enumerate}
+Exact repetitions and affine virtual words are deduplicated before the master batching challenge is sampled.
+\end{definition}
+
+\begin{definition}[Memory protocol $\Pi_{\mathrm{Mem}}$]
+\label{def:memory-protocol}
+The public data are $A$, $\mu_0$, the range tables, and the public execution-time table $i\mapsto i$.  The original execution commitments $(w_a,w_\omega,w_r,w_d)$ are fixed before any challenge.
+\begin{enumerate}[label=\textnormal{\arabic*.},leftmargin=*]
+  \item The prover commits to the sorted-trace and auxiliary tables appearing in \cref{def:memory-locally-valid-sorted}.
+  \item The verifier samples the tuple-compression challenge $\eta$ and the initial-memory tag $\tau_0$.
+  \item The verifier samples the logarithmic-derivative shifts required by the multiset and four lookup reductions; the prover supplies the corresponding inverse tables and scalar messages.
+  \item The verifier samples the linear-relation challenges $(\chi,\lambda)$ and the shared Hadamard fingerprint challenges $(\gamma,\theta)$ of \cref{sec:heterogeneous-batching}.
+  \item The parties execute exactly one
+  \begin{equation}
+    \Pi_{\mathrm{Het}}(\mathfrak B_{\mathrm{Mem}}).
+    \label{eq:memory-one-folding-batch}
+  \end{equation}
+\end{enumerate}
+\end{definition}
+
+The protocol therefore has one master batching challenge, one folding chain, and one final set of $\kappa$ proximity queries.  The earlier challenges only reduce tuple equality, range membership, and adjacency semantics to the low-degree relations protected by that one batch.
+
+\subsection{Completeness and soundness}
+\label{sec:memory-soundness}
+
+\begin{theorem}[Memory completeness]
+\label{thm:memory-completeness}
+If $(a,\omega,r,d)$ is operationally consistent with $\mu_0$ and the original words are honest table-form commitments, then there are honest prover messages for \cref{def:memory-protocol}.  Conditional on all logarithmic-derivative shifts avoiding their pole sets and all DEEP points avoiding their poles, the verifier accepts with probability $1$.
+\end{theorem}
+
+\begin{proof}
+By \cref{thm:memory-sorted-characterization}, sort the honest execution records and construct the locally valid auxiliary tables.  The tuple multisets are exactly equal, so their scalar compressions are equal for every $\eta$.  Each range lookup is true.  The initial-memory tagged lookup is true for every $\tau_0$ because every query pair is an actual public pair $(\bar a(k),\mu_0(\bar a(k)))$.  The five residual tables are zero, and all seven Hadamard relations hold by local validity.  Therefore every primitive claim in $\mathfrak B_{\mathrm{Mem}}$ is true.  Conditional perfect completeness follows from \cref{thm:heterogeneous-completeness} and the completeness theorems for the multiset and lookup reductions.
+\end{proof}
+
+Let $s_{\mathrm{Mem}}$ denote the number of distinct protected degree-$<N$ words in the deduplicated batch.  Let
+\begin{equation}
+  \varepsilon_{\mathrm{LD}}
+  \defeq
+  \frac{2N-1}{|\F|}
+  \label{eq:memory-one-lookup-bad-shift}
+\end{equation}
+be the uniform bad-shift bound for each length-$N$ logarithmic-derivative multiset/lookup instance from \cref{lem:lookup-bad-challenges,lem:multiset-bad-shifts}.
+
+\begin{definition}[Committed memory relation]
+\label{def:memory-committed-relation}
+Fix $0<\delta\le(1-\rho)/2$.  The relation $\mathcal R^{\delta}_{\mathrm{Mem}}[\mu_0]$ consists of pairs
+\[
+  ((w_a,w_\omega,w_r,w_d),(a,\omega,r,d))
+\]
+such that each original word is within fibre distance $\delta$ of the corresponding table-form commitment and $(a,\omega,r,d)$ is operationally consistent with $\mu_0$ in the sense of \cref{def:memory-operational-consistency}.
+\end{definition}
+
+\begin{lemma}[A joint memory-batch witness gives a valid sorted trace]
+\label{lem:memory-joint-witness}
+Fix all outer challenges.  Suppose $\mathfrak B_{\mathrm{Mem}}$ has a joint witness, the tuple-compression challenge is outside $T_{\mathrm{tuple}}$, the initial-memory tag is outside $T_{\mathrm{init}}$, every logarithmic-derivative shift lies outside the bad-shift set of its decoded false relation, and $(\chi,\lambda)$ lies outside the bad set of \cref{lem:memory-linear-fingerprint}.  Then the decoded original trace is operationally consistent with $\mu_0$.
+\end{lemma}
+
+\begin{proof}
+A joint witness satisfies every primitive relation in \cref{def:memory-sub-batch}.  The scalar multiset relation, together with $\eta\notin T_{\mathrm{tuple}}$ and \cref{lem:memory-tuple-compression}, gives equality of the original and sorted record multisets.  The three range lookups give the address, $\Delta_a$, and $q_t$ range conditions.  The tagged initial-memory lookup and $\tau_0\notin T_{\mathrm{init}}$ give \eqref{eq:memory-initial-selection} by \cref{lem:memory-initial-selection}.  The linear fingerprint outside its bad set forces all five residual tables to vanish, hence \eqref{eq:memory-address-difference}, \eqref{eq:memory-time-difference}, \eqref{eq:memory-block-start}, \eqref{eq:memory-continuity-difference}, and $q_t(N-1)=0$.  Together with \eqref{eq:memory-batch-time} and $\Delta_t(N-1)=0$, this also forces $s(N-1)=0$.  The seven Hadamard components give the remaining local relations, including \eqref{eq:memory-time-range-table}.  Thus the decoded auxiliary tables form a locally valid sorted trace.  Operational consistency follows from \cref{thm:memory-sorted-characterization}.
+\end{proof}
+
+\begin{theorem}[Memory soundness]
+\label{thm:memory-soundness}
+Assume
+\begin{equation}
+  0<\delta\le\frac{1-\rho}{2},
+  \qquad
+  2N<(1-\delta)M,
+  \qquad
+  p>2\max\{A,N\}.
+  \label{eq:memory-soundness-parameters}
+\end{equation}
+If $(w_a,w_\omega,w_r,w_d)$ has no witness in $\mathcal R^{\delta}_{\mathrm{Mem}}[\mu_0]$, then every deterministic prover is accepted by $\Pi_{\mathrm{Mem}}$ with probability at most
+\begin{equation}
+\begin{split}
+  \varepsilon_{\mathrm{Mem}}
+  \le{}&
+  \frac{4\binom{2N}{2}}{|\F|}
+  +\frac{\binom{N+A}{2}}{|\F|}
+  +5\varepsilon_{\mathrm{LD}}
+  +\frac{N+3}{|\F|}
+  \\
+  &+\frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{Mem}}-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\end{split}
+\label{eq:memory-soundness-bound}
+\end{equation}
+The same bound holds for randomized provers by averaging.  Collision-free extension tagging removes the two explicit compression-collision terms.  If lookup shifts are sampled from a larger extension field, replace the five occurrences of $|\F|$ in $\varepsilon_{\mathrm{LD}}$ by that challenge-field size.
+\end{theorem}
+
+\begin{proof}
+By unique decoding, either one original commitment has no table within fibre distance $\delta$, in which case the heterogeneous batch has no compatible joint witness, or the four original words uniquely decode to a trace $(a,\omega,r,d)$.  Assume the latter.  Since the committed relation is false, this decoded trace is not operationally consistent.
+
+The tuple-compression collision event contributes at most the first term of \eqref{eq:memory-soundness-bound} by \cref{lem:memory-tuple-compression}.  The initial-memory tag collision contributes the second term by \cref{lem:memory-initial-selection}.  There are five logarithmic-derivative instances before the master batch: one scalar multiset check for the record permutation and four lookups.  If any decoded one of these relations is false, \cref{lem:lookup-bad-challenges,lem:multiset-bad-shifts} charge at most $\varepsilon_{\mathrm{LD}}$ for its shift; a union bound gives $5\varepsilon_{\mathrm{LD}}$.  The five linear adjacency identities contribute at most $(4+N-1)/|\F|=(N+3)/|\F|$ by \cref{lem:memory-linear-fingerprint}.
+
+Outside all these outer bad events, if the master batch had a joint witness, \cref{lem:memory-joint-witness} would imply that the decoded trace is operationally consistent, a contradiction.  Hence the heterogeneous batch has no joint witness.  Since it contains Hadamard relations, \cref{thm:heterogeneous-soundness} contributes the remaining terms
+\[
+  \frac{2(N-1)}{|\F|}
+  +\frac{(s_{\mathrm{Mem}}-1)M}{|\F|}
+  +\varepsilon_{\mathrm{fold}}
+  +(1-\delta)^\kappa.
+\]
+Adding the outer events proves \eqref{eq:memory-soundness-bound}.  Randomized provers follow by conditioning on their internal randomness and averaging.
+\end{proof}
+
+\begin{corollary}[Memory knowledge by decoding]
+\label{cor:memory-knowledge}
+Under the hypotheses of \cref{thm:memory-soundness}, acceptance with probability larger than the right-hand side of \eqref{eq:memory-soundness-bound} implies that the unique decodings of the original access commitments exist and form an operationally consistent memory trace.  The decoded trace is recoverable in polynomial time by Reed--Solomon unique decoding.
+\end{corollary}
+
+\begin{proof}
+This is the contrapositive of \cref{thm:memory-soundness} together with polynomial-time unique decoding.
+\end{proof}
+
+\subsection{Decomposition and cost}
+\label{sec:memory-cost}
+
+At the relation level the construction is
+\begin{equation}
+\boxed{
+\begin{aligned}
+  \mathrm{MemoryConsistency}
+  ={}&\mathrm{TupleMultiset}
+  +4\times\mathrm{Lookup}
+  +7\times\mathrm{Hadamard}\\
+  &+1\times\mathrm{LinearAdjacencyFingerprint}.
+\end{aligned}}
+\label{eq:memory-decomposition-box}
+\end{equation}
+The four lookups are the execution-address range check, the nondecreasing-address difference check, the conditional positive-time-difference check, and the selection of the public initial memory value.  All seven Hadamard relations share the one $(\gamma,\theta)$ fingerprint pair of \cref{sec:heterogeneous-batching}, and every primitive shares the same final folding chain and query set.
+
+The prover constructs a sorted copy of $N$ records and a constant number of length-$N$ auxiliary tables.  Sorting therefore dominates the purely algebraic preprocessing at $O(N\log N)$ comparison work in a conventional implementation; once the order is known, all auxiliary tables are produced in $O(N)$ field operations before Reed--Solomon encoding.  The verifier does not scan the trace.  Its algebraic work consists of public challenge generation, scalar messages, local virtual-word arithmetic at the sampled positions, and the one FRI-style verifier.
+
+The main structural conclusion is that offline memory consistency introduces no proof primitive beyond those already developed for coefficient extraction.  Global temporal correctness is converted into (i) a permutation of access records, (ii) range and initial-state lookups, and (iii) local pointwise transition relations.  Each of those is already expressible through logarithmic derivatives, public linear functionals, and Hadamard products, and therefore inherits the same transparent Reed--Solomon/FRI backend.

@@ -1,0 +1,439 @@
+\section{Coefficient-Extraction Calculus}
+\label{sec:coefficient-calculus}
+
+This section isolates the algebraic identities that drive every protocol in the paper.  The basic mechanism is elementary: an inner product of two length-$N$ vectors is the middle coefficient of the product of one generating polynomial with the reversal of the other.  What makes this useful for proof systems is that several verifier-defined vectors admit compact product-form generating polynomials, and that the selected coefficient can be isolated by one bounded-degree polynomial identity.
+
+We first define reversal and the general coefficient functional, then derive the canonical-coordinate Kronecker kernel and the table-form multilinear-evaluation kernel, and finally prove the universal opening identity used later by the evaluation, inner-product, and Hadamard protocols.
+
+\subsection{Reversal and the middle coefficient}
+\label{sec:coefficient-reversal}
+
+\begin{definition}[Reversal]
+\label{def:reversal}
+For $P\in\F[X]_{<N}$, define its \emph{reversal} by
+\begin{equation}
+  P^{\star}(X)
+  \defeq
+  X^{N-1}P(X^{-1}).
+  \label{eq:reversal}
+\end{equation}
+Equivalently, if
+\[
+  P(X)=\sum_{j=0}^{N-1}p_jX^j,
+\]
+then
+\begin{equation}
+  P^{\star}(X)
+  =\sum_{j=0}^{N-1}p_jX^{N-1-j}.
+  \label{eq:reversal-coefficients}
+\end{equation}
+\end{definition}
+
+Although \eqref{eq:reversal} is written using $X^{-1}$, the right-hand side is a polynomial because $\deg P<N$.
+
+\begin{lemma}[Elementary properties of reversal]
+\label{lem:reversal-properties}
+For $P,Q\in\F[X]_{<N}$ and $a,b\in\F$:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item $[X^j]P^{\star}=[X^{N-1-j}]P$ for every $j\in[0,N-1]$;
+  \item $(P^{\star})^{\star}=P$;
+  \item $(aP+bQ)^{\star}=aP^{\star}+bQ^{\star}$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Write $P(X)=\sum_{j=0}^{N-1}p_jX^j$.  Then \eqref{eq:reversal-coefficients} gives
+\[
+  P^{\star}(X)=\sum_{j=0}^{N-1}p_jX^{N-1-j}.
+\]
+The coefficient of $X^j$ is therefore $p_{N-1-j}=[X^{N-1-j}]P$, proving (1).  Applying the same identity twice sends $p_j$ first to position $N-1-j$ and then back to $j$, proving (2).  Statement (3) follows coefficientwise from the definition.
+\end{proof}
+
+\begin{theorem}[Middle-coefficient inner-product identity]
+\label{thm:middle-coefficient-inner-product}
+Let $a=(a_0,\ldots,a_{N-1})$ and $b=(b_0,\ldots,b_{N-1})$ be vectors in $\F^N$, and let
+\[
+  V_a(X)=\sum_{j=0}^{N-1}a_jX^j,
+  \qquad
+  V_b(X)=\sum_{j=0}^{N-1}b_jX^j.
+\]
+Then
+\begin{equation}
+  \ip{a}{b}
+  =\sum_{j=0}^{N-1}a_jb_j
+  =\coeff{N-1}{V_a(X)V_b^{\star}(X)}.
+  \label{eq:middle-coefficient-inner-product}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+By \cref{def:reversal},
+\[
+  V_b^{\star}(X)=\sum_{k=0}^{N-1}b_kX^{N-1-k}.
+\]
+Hence the coefficient of $X^{N-1}$ in $V_aV_b^{\star}$ is
+\[
+  \sum_{j+k'=N-1} [X^j]V_a\,[X^{k'}]V_b^{\star}
+  =\sum_{j=0}^{N-1}a_jb_j,
+\]
+because $[X^{N-1-j}]V_b^{\star}=b_j$ by \cref{lem:reversal-properties}(1).
+\end{proof}
+
+\begin{definition}[Public kernel]
+\label{def:public-kernel}
+For a public vector $p=(p_0,\ldots,p_{N-1})\in\F^N$, define its \emph{reversed generating kernel}
+\begin{equation}
+  K_p(X)
+  \defeq
+  V_p^{\star}(X)
+  =\sum_{j=0}^{N-1}p_jX^{N-1-j}.
+  \label{eq:public-kernel}
+\end{equation}
+\end{definition}
+
+The previous theorem immediately gives the following linear-functional form.
+
+\begin{corollary}[Public linear functionals]
+\label{cor:public-linear-functional}
+For every $a,p\in\F^N$,
+\begin{equation}
+  \sum_{j=0}^{N-1}a_jp_j
+  =\coeff{N-1}{V_aK_p}.
+  \label{eq:public-linear-functional}
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+Apply \cref{thm:middle-coefficient-inner-product} with $b=p$ and use \cref{def:public-kernel}.
+\end{proof}
+
+\begin{definition}[Succinct kernel family]
+\label{def:succinct-kernel-family}
+Let $\Theta$ be a parameter set and let $p_\theta\in\F^N$ for $\theta\in\Theta$.  We call $(p_\theta)_{\theta\in\Theta}$ a \emph{succinct kernel family} if the value
+\[
+  K_{p_\theta}(\xi)
+\]
+can be computed from $(\theta,\xi)$ using $\operatorname{poly}(n)$ field operations, without materialising all $N=2^n$ coordinates of $p_\theta$.
+\end{definition}
+
+This definition is descriptive rather than cryptographic: later protocols will still have to prove low degree and consistency of the committed words.  Its role is to identify those public linear functionals whose local verifier work remains polynomial in $n$.
+
+\subsection{The canonical-coordinate Kronecker kernel}
+\label{sec:canonical-kernel}
+
+We now recover the coefficient-extraction identity for a multilinear polynomial written in the canonical basis of \cref{sec:preliminaries-multilinear}.  Let
+\[
+  f=\sum_{j=0}^{N-1}\alpha_jm_j\in\M,
+  \qquad
+  U_f(X)=\sum_{j=0}^{N-1}\alpha_jX^j.
+\]
+For $z=(z_1,\ldots,z_n)\in\F^n$, define
+\begin{equation}
+  K_z(X)
+  \defeq
+  \prod_{i=1}^{n}\left(X^{2^{i-1}}+z_i\right).
+  \label{eq:canonical-kernel}
+\end{equation}
+
+\begin{lemma}[Coefficients of the canonical kernel]
+\label{lem:canonical-kernel-coefficients}
+For every $j\in[0,N-1]$ with bits $(j_1,\ldots,j_n)$,
+\begin{equation}
+  [X^{N-1-j}]K_z(X)
+  =\prod_{i=1}^{n}z_i^{j_i}
+  =m_j(z).
+  \label{eq:canonical-kernel-coefficient}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Expanding \eqref{eq:canonical-kernel}, from each factor indexed by $i$ we choose either $X^{2^{i-1}}$ or $z_i$.  To obtain the monomial $X^{N-1-j}$, whose $i$-th binary digit is $1-j_i$ by \cref{lem:complement-bits}, we must choose $X^{2^{i-1}}$ exactly when $j_i=0$, and choose $z_i$ exactly when $j_i=1$.  The resulting coefficient is therefore
+\[
+  \prod_{i:j_i=1}z_i
+  =\prod_{i=1}^{n}z_i^{j_i}
+  =m_j(z).
+\]
+\end{proof}
+
+\begin{theorem}[Canonical Kronecker extraction]
+\label{thm:canonical-kronecker-extraction}
+Let $f\in\M$ and $z\in\F^n$.  Then
+\begin{equation}
+  f(z)
+  =\coeff{N-1}{U_f(X)K_z(X)}.
+  \label{eq:canonical-kronecker-extraction}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Using \cref{lem:canonical-kernel-coefficients},
+\begin{align*}
+  \coeff{N-1}{U_fK_z}
+  &=\sum_{j=0}^{N-1}[X^j]U_f\,[X^{N-1-j}]K_z\\
+  &=\sum_{j=0}^{N-1}\alpha_jm_j(z)
+   =f(z).
+\end{align*}
+\end{proof}
+
+\begin{remark}[Relation with the middle-coefficient identity]
+\label{rem:canonical-kernel-inner-product}
+Equation \eqref{eq:canonical-kronecker-extraction} is exactly \cref{thm:middle-coefficient-inner-product} applied to the canonical-coordinate vector $(\alpha_j)_j$ and the vector of monomial values $(m_j(z))_j$.  The special feature is that the reversed generating polynomial of $(m_j(z))_j$ factors as the product \eqref{eq:canonical-kernel}.  Thus an exponentially long verifier vector is represented by $n$ simple factors.
+\end{remark}
+
+\begin{proposition}[Local evaluation cost of $K_z$]
+\label{prop:canonical-kernel-cost}
+Given $\xi\in\F$, the value $K_z(\xi)$ can be computed using $n-1$ squarings to obtain
+\[
+  \xi,\xi^2,\xi^4,\ldots,\xi^{2^{n-1}},
+\]
+then $n$ additions and $n-1$ multiplications to multiply the $n$ factors in \eqref{eq:canonical-kernel}.
+\end{proposition}
+
+\begin{proof}
+Starting with $\xi$, repeated squaring computes $\xi^{2^{i-1}}$ from $\xi^{2^{i-2}}$ for $i=2,\ldots,n$, which uses $n-1$ squarings.  Forming each $\xi^{2^{i-1}}+z_i$ uses one addition, hence $n$ additions.  Multiplying $n$ field elements uses $n-1$ multiplications.
+\end{proof}
+
+\subsection{The table-form multilinear-evaluation kernel}
+\label{sec:table-evaluation-kernel}
+
+The table-form commitment of \cref{sec:table-encoding} stores the Boolean values of a multilinear polynomial rather than its canonical coefficients.  Its evaluation kernel is therefore the generating polynomial of the Boolean equality weights.
+
+For $z\in\F^n$, define
+\begin{equation}
+  E_z(X)
+  \defeq
+  \sum_{w\in\B^n}\eq(w,z)X^w.
+  \label{eq:eq-generating-polynomial}
+\end{equation}
+
+\begin{lemma}[Product form of the equality generating polynomial]
+\label{lem:eq-kernel-product}
+For every $z\in\F^n$,
+\begin{equation}
+  E_z(X)
+  =\prod_{i=1}^{n}\left((1-z_i)+z_iX^{2^{i-1}}\right).
+  \label{eq:eq-kernel-product}
+\end{equation}
+Its reversal is
+\begin{equation}
+  E_z^{\star}(X)
+  =\prod_{i=1}^{n}\left(z_i+(1-z_i)X^{2^{i-1}}\right).
+  \label{eq:eq-kernel-reversal-product}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Expanding the product in \eqref{eq:eq-kernel-product}, the coefficient of $X^w$ is obtained by choosing $z_iX^{2^{i-1}}$ when $w_i=1$ and $(1-z_i)$ when $w_i=0$.  Hence
+\[
+  [X^w]E_z
+  =\prod_{i=1}^{n}z_i^{w_i}(1-z_i)^{1-w_i}
+  =\eq(w,z),
+\]
+which proves \eqref{eq:eq-kernel-product} by \eqref{eq:eq-generating-polynomial}.
+
+For the reversal, use $N-1=\sum_i2^{i-1}$:
+\begin{align*}
+  E_z^{\star}(X)
+  &=X^{N-1}E_z(X^{-1})\\
+  &=\prod_{i=1}^{n}X^{2^{i-1}}
+      \left((1-z_i)+z_iX^{-2^{i-1}}\right)\\
+  &=\prod_{i=1}^{n}\left(z_i+(1-z_i)X^{2^{i-1}}\right).
+\end{align*}
+\end{proof}
+
+\begin{theorem}[Table-form multilinear evaluation by coefficient extraction]
+\label{thm:table-evaluation-extraction}
+Let $t:\B^n\to\F$ be a table and let $\widetilde t$ be its multilinear extension.  Then for every $z\in\F^n$,
+\begin{equation}
+  \widetilde t(z)
+  =\coeff{N-1}{V_t(X)E_z^{\star}(X)}.
+  \label{eq:table-evaluation-extraction}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+By \cref{thm:middle-coefficient-inner-product}, applied to the vectors $(t(w))_w$ and $(\eq(w,z))_w$,
+\[
+  \coeff{N-1}{V_tE_z^{\star}}
+  =\sum_{w\in\B^n}t(w)\eq(w,z).
+\]
+The right-hand side is $\widetilde t(z)$ by \eqref{eq:mle-definition}.
+\end{proof}
+
+\begin{proposition}[Local evaluation cost of $E_z^{\star}$]
+\label{prop:table-kernel-cost}
+Given $\xi\in\F$, the value $E_z^{\star}(\xi)$ can be computed using $n-1$ squarings, at most $2n$ additions/subtractions, $n$ scalar multiplications by the public values $1-z_i$, and $n-1$ multiplications to combine the factors.  In particular, its cost is $O(n)$ field operations.
+\end{proposition}
+
+\begin{proof}
+The powers $\xi^{2^{i-1}}$ are obtained by repeated squaring as in \cref{prop:canonical-kernel-cost}.  Each factor
+\[
+  z_i+(1-z_i)\xi^{2^{i-1}}
+\]
+requires computing $1-z_i$, one multiplication by $\xi^{2^{i-1}}$, and one addition.  Multiplying the $n$ factors uses $n-1$ further multiplications.  The stated bound follows.
+\end{proof}
+
+\begin{corollary}[Hypercube sums]
+\label{cor:hypercube-sum-extraction}
+For every table $t:\B^n\to\F$,
+\begin{equation}
+  \sum_{w\in\B^n}t(w)
+  =\coeff{N-1}{V_t(X)K_{\mathbf 1}(X)},
+  \qquad
+  K_{\mathbf 1}(X)=\sum_{j=0}^{N-1}X^j
+  =\prod_{i=1}^{n}\left(1+X^{2^{i-1}}\right).
+  \label{eq:hypercube-sum-extraction}
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+Apply \cref{cor:public-linear-functional} with the all-ones vector $\mathbf1$.  Its reversed generating polynomial equals its ordinary generating polynomial because all coefficients are one.  The product identity follows by expanding $\prod_i(1+X^{2^{i-1}})$: each exponent in $[0,N-1]$ has a unique binary expansion, so every monomial $X^j$ appears exactly once.
+\end{proof}
+
+\begin{remark}[One table commitment, two evaluation viewpoints]
+\label{rem:two-evaluation-viewpoints}
+The canonical identity \eqref{eq:canonical-kronecker-extraction} and the table identity \eqref{eq:table-evaluation-extraction} are the same middle-coefficient mechanism applied in two coordinate systems.  In canonical coordinates the verifier vector is $(m_j(z))_j$ and its reversed generating polynomial is $K_z$.  In table/Lagrange coordinates the verifier vector is $(\eq(w,z))_w$ and its reversed generating polynomial is $E_z^{\star}$.  The rest of this paper uses table form because pointwise arithmetic, lookup columns, permutation streams, and sparse linear-algebra witnesses are naturally represented by their values.
+\end{remark}
+
+\subsection{The universal opening identity}
+\label{sec:universal-opening-identity}
+
+The preceding identities reduce the desired claim to a selected coefficient of a product.  We now isolate that coefficient by a polynomial identity whose auxiliary polynomials obey the same degree bound $N$ as the committed Reed--Solomon code.
+
+\begin{definition}[Coefficient functional]
+\label{def:coefficient-functional}
+For $U,K\in\F[X]_{<N}$, define
+\begin{equation}
+  \mathsf{CE}_N(U,K)
+  \defeq
+  \coeff{N-1}{U(X)K(X)}.
+  \label{eq:coefficient-functional}
+\end{equation}
+\end{definition}
+
+\begin{theorem}[Universal split identity]
+\label{thm:universal-split}
+Let $U,K\in\F[X]_{<N}$ and put
+\[
+  v=\mathsf{CE}_N(U,K).
+\]
+Then there exist unique polynomials $A\in\F[X]_{<N}$ and $H\in\F[X]_{<N}$ such that
+\begin{equation}
+  XU(X)K(X)
+  =A(X)+vX^N+X^{N+1}H(X).
+  \label{eq:universal-split}
+\end{equation}
+Moreover, the honest polynomial $H$ actually satisfies $\deg H<N-1$ unless $H=0$.
+\end{theorem}
+
+\begin{proof}
+Because $\deg U,\deg K\le N-1$,
+\[
+  \deg(XUK)\le2N-1.
+\]
+Write
+\[
+  XUK=\sum_{r=0}^{2N-1}c_rX^r.
+\]
+The coefficient at degree $N$ is
+\[
+  c_N=[X^N](XUK)=[X^{N-1}]UK=v.
+\]
+Define
+\[
+  A(X)=\sum_{r=0}^{N-1}c_rX^r
+\]
+and
+\[
+  H(X)=\sum_{r=N+1}^{2N-1}c_rX^{r-(N+1)}.
+\]
+Then $\deg A<N$, while the largest possible exponent of $H$ is
+\[
+  (2N-1)-(N+1)=N-2,
+\]
+so $H\in\F[X]_{<N}$, and \eqref{eq:universal-split} holds.
+
+For uniqueness, suppose also
+\[
+  XUK=A'+vX^N+X^{N+1}H'
+\]
+with $A',H'\in\F[X]_{<N}$.  The degrees occupied by $A'$, $vX^N$, and $X^{N+1}H'$ are respectively contained in
+\[
+  [0,N-1],\qquad \{N\},\qquad [N+1,2N].
+\]
+These sets are disjoint.  Comparing coefficients in the first and third ranges gives $A'=A$ and $H'=H$.
+\end{proof}
+
+The converse direction is what later soundness proofs use.
+
+\begin{lemma}[Universal identity lemma]
+\label{lem:universal-identity}
+Let $U,K,A,H\in\F[X]_{<N}$ and $v\in\F$, and define
+\begin{equation}
+  \Phi(X)
+  \defeq
+  XU(X)K(X)-A(X)-vX^N-X^{N+1}H(X).
+  \label{eq:identity-residual}
+\end{equation}
+Then
+\begin{equation}
+  \deg\Phi\le2N.
+  \label{eq:identity-residual-degree}
+\end{equation}
+If $\Phi=0$, then
+\begin{equation}
+  v=\mathsf{CE}_N(U,K)=\coeff{N-1}{UK}.
+  \label{eq:identity-implies-coefficient}
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+The four terms in \eqref{eq:identity-residual} have degrees at most
+\[
+  2N-1,\qquad N-1,\qquad N,\qquad 2N,
+\]
+respectively, proving \eqref{eq:identity-residual-degree}.  If $\Phi=0$, compare the coefficient of $X^N$.  The term $A$ contributes nothing because $\deg A<N$, and $X^{N+1}H$ has no monomial of degree $N$.  Therefore
+\[
+  [X^N](XUK)=v.
+\]
+Since $[X^N](XUK)=[X^{N-1}]UK$, \eqref{eq:identity-implies-coefficient} follows.
+\end{proof}
+
+\begin{corollary}[General split criterion]
+\label{cor:general-split-criterion}
+For fixed $U,K\in\F[X]_{<N}$ and $v\in\F$, the following are equivalent:
+\begin{enumerate}[label=(\arabic*),leftmargin=*]
+  \item $v=\mathsf{CE}_N(U,K)$;
+  \item there exist $A,H\in\F[X]_{<N}$ satisfying \eqref{eq:universal-split}.
+\end{enumerate}
+When these conditions hold, $A$ and $H$ are unique.
+\end{corollary}
+
+\begin{proof}
+If (1) holds, existence and uniqueness follow from \cref{thm:universal-split}.  If (2) holds, the residual polynomial \eqref{eq:identity-residual} is zero, so \cref{lem:universal-identity} gives (1).  Uniqueness follows again from \cref{thm:universal-split}.
+\end{proof}
+
+\begin{remark}[Why the factor $X$ is essential]
+\label{rem:factor-x}
+Without the factor $X$, one might try to certify
+\[
+  UK=A_0+vX^{N-1}+X^NH_0.
+\]
+To prevent $A_0$ from absorbing an incorrect value of $v$, one would need the stricter bound $\deg A_0<N-1$.  The Reed--Solomon backend used in this paper naturally enforces the power-of-two degree bound $N$, not $N-1$.  Multiplication by $X$ moves the selected coefficient from degree $N-1$ to degree $N$, so the ordinary bound $A\in\F[X]_{<N}$ suffices.
+\end{remark}
+
+\begin{corollary}[Pointwise reconstruction of the high part]
+\label{cor:virtual-high-part}
+Suppose $U,K,A,H\in\F[X]_{<N}$ and $v\in\F$ satisfy \eqref{eq:universal-split}.  Then for every $\xi\in\F^{\times}$,
+\begin{equation}
+  H(\xi)
+  =\frac{\xi U(\xi)K(\xi)-A(\xi)-v\xi^N}{\xi^{N+1}}.
+  \label{eq:virtual-high-part}
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+Evaluate \eqref{eq:universal-split} at $\xi$ and divide by the nonzero value $\xi^{N+1}$.
+\end{proof}
+
+Equation \eqref{eq:virtual-high-part} is the bridge from coefficient extraction to the proximity backend: on the multiplicative evaluation domain $L\subseteq\Fq^{\times}$, the verifier can compute the would-be evaluation of $H$ locally from the evaluations of $U$, the kernel $K$, and the single auxiliary polynomial $A$.  The next section formalises this and other transformations as virtual Reed--Solomon words.

@@ -39,9 +39,16 @@ theorem universalSplitCoeff {F : Type*} [AddMonoid F]
     (hsupp : ∀ r, 2 * N - 1 ≤ r → c r = 0) (r : Nat) :
     xShift c r =
       recombineSplit N (splitLow N c) (splitValue N c) (splitHigh N c) r := by
+  by_cases hN : N = 0
+  · subst N
+    by_cases hr : r = 0
+    · subst r
+      simp [xShift, recombineSplit, splitLow, splitValue, splitHigh]
+    · have hc : c (r - 1) = 0 := hsupp (r - 1) (by omega)
+      simp [xShift, recombineSplit, splitLow, splitValue, splitHigh, hr, hc]
   by_cases h0 : r = 0
   · subst r
-    simp [xShift, recombineSplit, splitLow, splitValue, splitHigh]
+    simp [xShift, recombineSplit, splitLow, splitValue, splitHigh, hN]
   by_cases hA : r < N
   · simp [recombineSplit, hA, splitLow]
   by_cases hV : r = N

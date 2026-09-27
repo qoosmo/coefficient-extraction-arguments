@@ -2,3 +2,6 @@ import CoeffExtract.Basic
 import CoeffExtract.Reversal
 import CoeffExtract.CoefficientIdentity
 import CoeffExtract.UniversalSplit
+import CoeffExtract.PolynomialBridge
+import CoeffExtract.MLEKernel
+import CoeffExtract.VirtualReversal

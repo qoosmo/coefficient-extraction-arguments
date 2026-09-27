@@ -33,7 +33,7 @@ Completed manuscript sections:
 ## Status
 
 - Paper: Sections 1--21 drafted, audited, cross-reference checked, bibliography refreshed through September 2026, and compiled. The abstract/introduction have been reconciled with the final theorem set.
-- Lean 4: Phase 1 algebraic kernel added (table coefficients, reversal, middle-coefficient/inner-product identity, and coefficient-form universal split); CI is configured to reject `sorry`, `admit`, and unapproved axioms.
+- Lean 4: Phase 2 added the Mathlib `Polynomial` bridge, table-MLE equality-weight kernel, and reusable reversal/word-permutation layer on top of the Phase 1 algebraic kernel; CI rejects `sorry`, `admit`, and unapproved axioms.
 - Rust: scaffold only; implementation and controlled benchmarks follow after the Lean theorem interface is fixed.
 
 ## Build the paper

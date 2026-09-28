@@ -40,3 +40,12 @@ import CoeffExtract
 #print axioms CoeffExtract.virtualInnerProductHighValue_eq_eval
 #print axioms CoeffExtract.virtualInnerProductHighValue_eq_rsWord
 #print axioms CoeffExtract.virtualReversedRSWord_apply
+#print axioms CoeffExtract.eval_scaledTablePolynomial
+#print axioms CoeffExtract.dot_geometricScale_eq_weightedHadamardSum
+#print axioms CoeffExtract.coeff_scaledTablePolynomial_mul_reversed_eq_weightedHadamardSum
+#print axioms CoeffExtract.weightedHadamardSum_eq_coeff
+#print axioms CoeffExtract.weightedTableSum_eq_eval
+#print axioms CoeffExtract.weightedHadamardSum_eq_eval_of_hadamard
+#print axioms CoeffExtract.hadamard_compressed_coefficient
+#print axioms CoeffExtract.hadamard_opening_identity
+#print axioms CoeffExtract.hadamard_compressed_value_eq_dot

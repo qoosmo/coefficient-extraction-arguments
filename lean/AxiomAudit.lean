@@ -23,3 +23,9 @@ import CoeffExtract
 #print axioms CoeffExtract.coeff_tablePolynomial_mul_reversed_eq_dot
 #print axioms CoeffExtract.coeff_tablePolynomial_mul_public_eq
 #print axioms CoeffExtract.coeff_tablePolynomial_mul_ones_eq_sum
+#print axioms CoeffExtract.coeff_X_mul_eq_xShift
+#print axioms CoeffExtract.coeff_recombineSplitPolynomial
+#print axioms CoeffExtract.universalSplitPolynomial
+#print axioms CoeffExtract.tablePolynomial_mul_support
+#print axioms CoeffExtract.universalSplit_tablePolynomial_mul
+#print axioms CoeffExtract.splitValue_tablePolynomial_mul_eq_middleCoeff

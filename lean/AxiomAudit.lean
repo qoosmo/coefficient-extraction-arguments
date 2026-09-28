@@ -35,3 +35,8 @@ import CoeffExtract
 #print axioms CoeffExtract.coeff_X_innerProductPolynomial_middle
 #print axioms CoeffExtract.innerProduct_claim_eq_dot_of_opening_identity
 #print axioms CoeffExtract.innerProduct_opening_identity_iff
+#print axioms CoeffExtract.virtualReversedRSWord_eq
+#print axioms CoeffExtract.eval_innerProduct_opening_identity
+#print axioms CoeffExtract.virtualInnerProductHighValue_eq_eval
+#print axioms CoeffExtract.virtualInnerProductHighValue_eq_rsWord
+#print axioms CoeffExtract.virtualReversedRSWord_apply

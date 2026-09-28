@@ -16,3 +16,6 @@ import CoeffExtract
 #print axioms CoeffExtract.revIndex_testBit
 #print axioms CoeffExtract.mleKernelCoeffs_eq_productWeightTable
 #print axioms CoeffExtract.mleKernelProduct_succ
+#print axioms CoeffExtract.mleKernelProduct_coeff_fin
+#print axioms CoeffExtract.mleKernelProduct_eq_productWeightPolynomial
+#print axioms CoeffExtract.mleKernelProduct_eq_mleKernelPolynomial

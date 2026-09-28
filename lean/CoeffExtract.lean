@@ -15,3 +15,4 @@ import CoeffExtract.PolynomialUniversalSplit
 import CoeffExtract.InnerProductInterface
 import CoeffExtract.InnerProductRSInterface
 import CoeffExtract.HadamardInterface
+import CoeffExtract.DeepQuotientInterface

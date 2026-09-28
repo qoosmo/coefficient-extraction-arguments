@@ -49,3 +49,14 @@ import CoeffExtract
 #print axioms CoeffExtract.hadamard_compressed_coefficient
 #print axioms CoeffExtract.hadamard_opening_identity
 #print axioms CoeffExtract.hadamard_compressed_value_eq_dot
+#print axioms CoeffExtract.deepQuotient_spec
+#print axioms CoeffExtract.deepQuotientRelation_forces_eval
+#print axioms CoeffExtract.deepQuotientRelation_eval_of_ne
+#print axioms CoeffExtract.eval_deepQuotient_of_ne
+#print axioms CoeffExtract.hadamardDeepQA_spec
+#print axioms CoeffExtract.hadamardY1_eq_scaled_eval
+#print axioms CoeffExtract.hadamardDeepQQ_spec
+#print axioms CoeffExtract.hadamardDeepQC_spec
+#print axioms CoeffExtract.hadamardDeep_link_consistency
+#print axioms CoeffExtract.hadamardDeep_output_consistency
+#print axioms CoeffExtract.hadamardDeep_honest_package

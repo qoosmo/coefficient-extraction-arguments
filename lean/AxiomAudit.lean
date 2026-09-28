@@ -29,3 +29,9 @@ import CoeffExtract
 #print axioms CoeffExtract.tablePolynomial_mul_support
 #print axioms CoeffExtract.universalSplit_tablePolynomial_mul
 #print axioms CoeffExtract.splitValue_tablePolynomial_mul_eq_middleCoeff
+#print axioms CoeffExtract.innerProduct_splitValue_eq_dot
+#print axioms CoeffExtract.innerProduct_opening_identity
+#print axioms CoeffExtract.coeff_innerProductClaimPolynomial_middle
+#print axioms CoeffExtract.coeff_X_innerProductPolynomial_middle
+#print axioms CoeffExtract.innerProduct_claim_eq_dot_of_opening_identity
+#print axioms CoeffExtract.innerProduct_opening_identity_iff

@@ -12,3 +12,4 @@ import CoeffExtract.MLEProductRecursion
 import CoeffExtract.MLEProductBridge
 import CoeffExtract.PolynomialCoefficientIdentity
 import CoeffExtract.PolynomialUniversalSplit
+import CoeffExtract.InnerProductInterface

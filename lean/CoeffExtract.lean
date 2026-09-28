@@ -10,3 +10,4 @@ import CoeffExtract.RSReversal
 import CoeffExtract.BinaryKernelBridge
 import CoeffExtract.MLEProductRecursion
 import CoeffExtract.MLEProductBridge
+import CoeffExtract.PolynomialCoefficientIdentity

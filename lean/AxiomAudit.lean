@@ -19,3 +19,7 @@ import CoeffExtract
 #print axioms CoeffExtract.mleKernelProduct_coeff_fin
 #print axioms CoeffExtract.mleKernelProduct_eq_productWeightPolynomial
 #print axioms CoeffExtract.mleKernelProduct_eq_mleKernelPolynomial
+#print axioms CoeffExtract.coeff_tablePolynomial_mul_eq_middleCoeff
+#print axioms CoeffExtract.coeff_tablePolynomial_mul_reversed_eq_dot
+#print axioms CoeffExtract.coeff_tablePolynomial_mul_public_eq
+#print axioms CoeffExtract.coeff_tablePolynomial_mul_ones_eq_sum

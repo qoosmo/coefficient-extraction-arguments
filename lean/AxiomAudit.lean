@@ -60,3 +60,13 @@ import CoeffExtract
 #print axioms CoeffExtract.hadamardDeep_link_consistency
 #print axioms CoeffExtract.hadamardDeep_output_consistency
 #print axioms CoeffExtract.hadamardDeep_honest_package
+#print axioms CoeffExtract.eval_hadamardFingerprintPolynomial
+#print axioms CoeffExtract.hadamardFingerprintPolynomial_ne_zero
+#print axioms CoeffExtract.tablePolynomial_natDegree_lt
+#print axioms CoeffExtract.hadamardFingerprintPolynomial_natDegree_le
+#print axioms CoeffExtract.card_zeroChallengeFinset_le_natDegree
+#print axioms CoeffExtract.card_bad_hadamard_gamma_le
+#print axioms CoeffExtract.scalingErrorPolynomial_ne_zero
+#print axioms CoeffExtract.scalingErrorPolynomial_natDegree_lt
+#print axioms CoeffExtract.eval_scalingErrorPolynomial_eq_zero_iff
+#print axioms CoeffExtract.card_bad_scaling_theta_le
